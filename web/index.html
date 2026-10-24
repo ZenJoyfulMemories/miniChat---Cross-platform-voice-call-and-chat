@@ -7,6 +7,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>VoiceCall · 语音聊天</title>
+  <script>
+    try {
+      var savedUi = JSON.parse(localStorage.getItem('voicecall.ui.v1') || 'null');
+      if (savedUi && savedUi.theme === 'light') {
+        document.documentElement.dataset.theme = 'light';
+        var themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) themeMeta.content = '#f5f3fa';
+      }
+    } catch (e) { /* 忽略 */ }
+  </script>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -31,6 +41,13 @@
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 21l1.9-4.2A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-logo" viewBox="0 0 32 32">
+      <rect x="1" y="1" width="30" height="30" rx="9" fill="#b9a4ff" stroke="none"/>
+      <path d="M16 6.4c-6.4 0-11.6 4.2-11.6 9.4 0 3 2 5.7 5 7.4l-.9 4.6 4.7-2.2c.9.2 1.9.2 2.8.2 6.4 0 11.6-4.2 11.6-9.4S22.4 6.4 16 6.4z" fill="#1a1033" stroke="none"/>
+      <g transform="translate(11.7 9.9) scale(0.39)" stroke="none">
+        <path d="M6.62,10.79c1.44,2.83 3.76,5.14 6.59,6.59l2.2,-2.2c0.27,-0.27 0.67,-0.36 1.02,-0.24 1.12,0.37 2.33,0.57 3.57,0.57 0.55,0 1,0.45 1,1L20,20c0,0.55 -0.45,1 -1,1 -9.39,0 -17,-7.61 -17,-17 0,-0.55 0.45,-1 1,-1h3.5c0.55,0 1,0.45 1,1 0,1.25 0.2,2.45 0.57,3.57 0.11,0.35 0.03,0.74 -0.25,1.02l-2.2,2.2z" fill="#b9a4ff"/>
+      </g>
+    </symbol>
   </svg>
 
   <main id="app">
@@ -38,38 +55,38 @@
     <section id="auth" class="auth-view hidden">
       <div class="auth-shell">
         <div class="auth-intro">
-          <div class="auth-logo">V</div>
+          <div class="auth-logo"><svg><use href="#i-logo"/></svg></div>
           <h1>VoiceCall</h1>
-          <p>校园网语音通话与聊天</p>
+          <p data-i18n="auth.tagline">校园网语音通话与聊天</p>
           <div class="auth-points">
-            <span><i></i>实时语音</span>
-            <span><i></i>即时消息</span>
-            <span><i></i>锁屏接听</span>
+            <span><i></i><em data-i18n="auth.point.voice">实时语音</em></span>
+            <span><i></i><em data-i18n="auth.point.chat">即时消息</em></span>
+            <span><i></i><em data-i18n="auth.point.lock">锁屏接听</em></span>
           </div>
         </div>
         <div class="auth-panel">
           <div class="segmented" id="segmented" data-mode="login">
             <span class="seg-thumb" aria-hidden="true"></span>
-            <button type="button" data-mode="login" class="active">登录</button>
-            <button type="button" data-mode="register">注册</button>
+            <button type="button" data-mode="login" class="active" data-i18n="auth.login">登录</button>
+            <button type="button" data-mode="register" data-i18n="auth.register">注册</button>
           </div>
           <form id="auth-form" autocomplete="on" novalidate>
             <label class="field">
-              <span>账号</span>
-              <input id="auth-id" name="username" type="text" autocapitalize="none" autocomplete="username" spellcheck="false" placeholder="例如 xiaoming">
+              <span data-i18n="auth.account">账号</span>
+              <input id="auth-id" name="username" type="text" autocapitalize="none" autocomplete="username" spellcheck="false" data-i18n-ph="auth.accountPh" placeholder="例如 xiaoming">
             </label>
             <label class="field hidden" id="name-field">
-              <span>昵称</span>
-              <input id="auth-name" name="nickname" type="text" autocomplete="nickname" placeholder="显示给联系人的名字">
+              <span data-i18n="auth.nickname">昵称</span>
+              <input id="auth-name" name="nickname" type="text" autocomplete="nickname" data-i18n-ph="auth.nicknamePh" placeholder="显示给联系人的名字">
             </label>
             <label class="field">
-              <span>密码</span>
-              <input id="auth-pwd" name="password" type="password" autocomplete="current-password" placeholder="至少 6 位">
+              <span data-i18n="auth.password">密码</span>
+              <input id="auth-pwd" name="password" type="password" autocomplete="current-password" data-i18n-ph="auth.passwordPh" placeholder="至少 6 位">
             </label>
             <p class="form-error" id="auth-error" role="alert"></p>
             <button class="primary" id="auth-submit" type="submit">登录</button>
           </form>
-          <p class="auth-foot">同一账号可同时在网页端与手机端在线</p>
+          <p class="auth-foot" data-i18n="auth.foot">同一账号可同时在网页端与手机端在线</p>
         </div>
       </div>
     </section>
@@ -77,27 +94,27 @@
     <!-- 主界面 -->
     <section id="home" class="shell hidden">
       <nav class="rail" aria-label="主导航">
-        <div class="rail-logo">V</div>
-        <button class="rail-btn" data-tab="chats" aria-label="聊天"><svg><use href="#i-chat"/></svg></button>
-        <button class="rail-btn" data-tab="me" aria-label="我"><svg><use href="#i-user"/></svg></button>
+        <div class="rail-logo"><svg><use href="#i-logo"/></svg></div>
+        <button class="rail-btn" data-tab="chats" data-i18n-aria="nav.chats" aria-label="聊天"><svg><use href="#i-chat"/></svg></button>
+        <button class="rail-btn" data-tab="me" data-i18n-aria="nav.me" aria-label="我"><svg><use href="#i-user"/></svg></button>
         <div class="rail-gap"></div>
-        <button class="rail-btn" id="btn-settings" aria-label="设置"><svg><use href="#i-gear"/></svg></button>
-        <div class="rail-avatar" id="rail-avatar">V</div>
+        <button class="rail-btn" id="btn-settings" data-i18n-aria="nav.settings" aria-label="设置"><svg><use href="#i-gear"/></svg></button>
+        <div class="rail-avatar" id="rail-avatar"><svg><use href="#i-logo"/></svg></div>
       </nav>
 
       <section class="list-pane">
         <header class="list-top">
           <div class="list-heading">
-            <h1 id="list-title">聊天</h1>
+            <h1 id="list-title" data-i18n="nav.chats">聊天</h1>
             <div class="list-tools">
               <span class="conn-dot" id="net-indicator" title="连接状态"></span>
               <span class="online-pill" id="online-count">0 在线</span>
-              <button class="icon-btn" id="btn-add" aria-label="添加联系人"><svg><use href="#i-plus"/></svg></button>
+              <button class="icon-btn" id="btn-add" data-i18n-aria="nav.addContact" aria-label="添加联系人"><svg><use href="#i-plus"/></svg></button>
             </div>
           </div>
           <label class="search" id="search-wrap">
             <svg><use href="#i-search"/></svg>
-            <input id="contact-search" type="search" placeholder="搜索聊天" autocomplete="off">
+            <input id="contact-search" type="search" data-i18n-ph="list.searchPh" placeholder="搜索聊天" autocomplete="off">
           </label>
         </header>
 
@@ -106,25 +123,25 @@
             <ul id="chat-list" class="chat-list"></ul>
             <div class="empty" id="empty-chats">
               <div class="empty-icon"><svg><use href="#i-user-plus"/></svg></div>
-              <p>还没有联系人</p>
-              <span>点击右上角 + 添加对方账号，即可聊天或通话</span>
+              <p data-i18n="list.emptyTitle">还没有联系人</p>
+              <span data-i18n="list.emptyHint">点击右上角 + 添加对方账号，即可聊天或通话</span>
             </div>
           </section>
 
           <section class="pane hidden" id="pane-me">
             <div class="me-card">
-              <button class="me-avatar-btn" id="me-avatar-btn" aria-label="更换头像">
-                <div class="avatar me-big" id="me-avatar">V</div>
+              <button class="me-avatar-btn" id="me-avatar-btn" data-i18n-aria="me.changeAvatar" aria-label="更换头像">
+                <div class="avatar me-big" id="me-avatar"><svg><use href="#i-logo"/></svg></div>
               </button>
               <strong id="me-name">VoiceCall</strong>
               <span id="me-id">@</span>
-              <span class="me-avatar-hint">点击头像更换</span>
+              <span class="me-avatar-hint" data-i18n="me.changeAvatar">点击头像更换</span>
             </div>
             <ul class="menu-list">
-              <li class="menu-item" id="btn-settings-me"><span>设置与权限</span><svg><use href="#i-arrow"/></svg></li>
+              <li class="menu-item" id="btn-settings-me"><span data-i18n="me.settings">设置与权限</span><svg><use href="#i-arrow"/></svg></li>
             </ul>
-            <div class="me-net" id="net-status"><i></i><em>已连接</em></div>
-            <p class="me-version">VoiceCall · 局域网语音与聊天</p>
+            <div class="me-net" id="net-status"><i></i><em data-i18n="net.connected">已连接</em></div>
+            <p class="me-version" data-i18n="app.version">VoiceCall · 局域网语音与聊天</p>
           </section>
         </div>
         <input type="file" id="avatar-input" accept="image/*" hidden>
@@ -132,33 +149,33 @@
 
       <section class="content-pane">
         <div class="welcome" id="welcome">
-          <div class="welcome-mark"><svg><use href="#i-phone"/></svg></div>
+          <div class="welcome-mark"><svg><use href="#i-logo"/></svg></div>
           <h2>VoiceCall</h2>
-          <p>选择聊天开始对话，或在通讯录里发起语音通话</p>
+          <p data-i18n="welcome.hint">选择聊天开始对话，或在通讯录里发起语音通话</p>
           <div class="welcome-chips">
-            <span><i></i>实时在线</span>
-            <span>语音通话</span>
-            <span>消息同步</span>
+            <span><i></i><em data-i18n="welcome.chip.online">实时在线</em></span>
+            <span data-i18n="welcome.chip.call">语音通话</span>
+            <span data-i18n="welcome.chip.sync">消息同步</span>
           </div>
         </div>
 
         <section id="chat" class="chat-pane hidden" role="dialog" aria-label="聊天">
           <header class="chat-head">
-            <button class="icon-btn chat-back" data-close="chat" aria-label="返回"><svg><use href="#i-arrow-left"/></svg></button>
+            <button class="icon-btn chat-back" data-close="chat" data-i18n-aria="common.back" aria-label="返回"><svg><use href="#i-arrow-left"/></svg></button>
             <div class="avatar" id="chat-avatar">?</div>
             <div class="chat-peer">
-              <strong id="chat-name">联系人</strong>
-              <span id="chat-status">在线</span>
+              <strong id="chat-name" data-i18n="chat.peer">联系人</strong>
+              <span id="chat-status"></span>
             </div>
-            <button class="icon-btn" id="chat-call" aria-label="语音呼叫"><svg><use href="#i-phone"/></svg></button>
+            <button class="icon-btn" id="chat-call" data-i18n-aria="chat.callAria" aria-label="语音呼叫"><svg><use href="#i-phone"/></svg></button>
           </header>
           <div class="chat-body" id="chat-body">
-            <div class="chat-empty" id="chat-empty">还没有消息，打个招呼吧</div>
+            <div class="chat-empty" id="chat-empty" data-i18n="chat.empty">还没有消息，打个招呼吧</div>
             <ul class="chat-messages" id="chat-messages"></ul>
           </div>
           <form class="chat-compose" id="chat-form">
-            <input id="chat-input" type="text" maxlength="2000" placeholder="发送消息" autocomplete="off" enterkeyhint="send">
-            <button type="submit" class="chat-send" id="chat-send" aria-label="发送" disabled>
+            <input id="chat-input" type="text" maxlength="2000" data-i18n-ph="chat.messagePh" placeholder="发送消息" autocomplete="off" enterkeyhint="send">
+            <button type="submit" class="chat-send" id="chat-send" data-i18n-aria="chat.send" aria-label="发送" disabled>
               <svg><use href="#i-send"/></svg>
             </button>
           </form>
@@ -169,27 +186,27 @@
 
   <!-- 移动端底部导航 -->
   <nav class="tab-bar hidden" id="tab-bar" aria-label="底部导航">
-    <button class="tab-btn active" data-tab="chats"><svg><use href="#i-chat"/></svg><span>聊天</span></button>
-    <button class="tab-btn" data-tab="me"><svg><use href="#i-user"/></svg><span>我</span></button>
+    <button class="tab-btn active" data-tab="chats"><svg><use href="#i-chat"/></svg><span data-i18n="nav.chats">聊天</span></button>
+    <button class="tab-btn" data-tab="me"><svg><use href="#i-user"/></svg><span data-i18n="nav.me">我</span></button>
   </nav>
 
   <!-- 来电 -->
   <div id="incoming" class="overlay incoming hidden" role="dialog" aria-modal="true" aria-label="来电">
     <div class="overlay-bg"></div>
     <div class="incoming-body">
-      <div class="incoming-label"><i></i>语音来电</div>
+      <div class="incoming-label"><i></i><em data-i18n="incoming.label">语音来电</em></div>
       <div class="big-avatar pulse" id="incoming-avatar">?</div>
-      <h2 id="incoming-name">未知</h2>
+      <h2 id="incoming-name" data-i18n="incoming.unknown">未知</h2>
       <p id="incoming-id">@</p>
-      <p class="incoming-hint">VoiceCall 高清语音</p>
+      <p class="incoming-hint" data-i18n="incoming.hint">VoiceCall 高清语音</p>
       <div class="incoming-actions">
         <div class="action">
-          <button class="circle-btn danger" id="btn-decline" aria-label="拒绝"><svg><use href="#i-phone-off"/></svg></button>
-          <span>拒绝</span>
+          <button class="circle-btn danger" id="btn-decline" data-i18n-aria="incoming.decline" aria-label="拒绝"><svg><use href="#i-phone-off"/></svg></button>
+          <span data-i18n="incoming.decline">拒绝</span>
         </div>
         <div class="action">
-          <button class="circle-btn success breathe" id="btn-answer" aria-label="接听"><svg><use href="#i-phone"/></svg></button>
-          <span>接听</span>
+          <button class="circle-btn success breathe" id="btn-answer" data-i18n-aria="incoming.answer" aria-label="接听"><svg><use href="#i-phone"/></svg></button>
+          <span data-i18n="incoming.answer">接听</span>
         </div>
       </div>
     </div>
@@ -199,29 +216,29 @@
   <div id="call" class="overlay call hidden" role="dialog" aria-modal="true" aria-label="通话">
     <div class="overlay-bg"></div>
     <div class="call-body">
-      <div class="call-status" id="call-status">正在呼叫…</div>
+      <div class="call-status" id="call-status" data-i18n="call.ringing">正在呼叫</div>
       <div class="call-avatar-wrap">
         <div class="big-avatar" id="call-avatar">?</div>
       </div>
       <h2 id="call-name">联系人</h2>
       <p class="call-timer" id="call-timer">00:00</p>
-      <p class="call-hint" id="call-hint">等待对方接听</p>
+      <p class="call-hint" id="call-hint" data-i18n="call.waiting">等待对方接听</p>
       <div class="wave-bars" id="wave-bars" aria-hidden="true"></div>
       <div class="call-actions">
         <div class="action">
-          <button class="circle-btn" id="btn-mute" aria-label="静音">
+          <button class="circle-btn" id="btn-mute" data-i18n-aria="call.mute" aria-label="静音">
             <svg class="ico-mic"><use href="#i-mic"/></svg>
             <svg class="ico-mic-off"><use href="#i-mic-off"/></svg>
           </button>
-          <span>静音</span>
+          <span data-i18n="call.mute">静音</span>
         </div>
         <div class="action">
-          <button class="circle-btn" id="btn-speaker" aria-label="扬声器"><svg><use href="#i-speaker"/></svg></button>
-          <span>扬声器</span>
+          <button class="circle-btn" id="btn-speaker" data-i18n-aria="call.speaker" aria-label="扬声器"><svg><use href="#i-speaker"/></svg></button>
+          <span data-i18n="call.speaker">扬声器</span>
         </div>
         <div class="action">
-          <button class="circle-btn danger" id="btn-hangup" aria-label="挂断"><svg><use href="#i-phone-off"/></svg></button>
-          <span>挂断</span>
+          <button class="circle-btn danger" id="btn-hangup" data-i18n-aria="call.hangup" aria-label="挂断"><svg><use href="#i-phone-off"/></svg></button>
+          <span data-i18n="call.hangup">挂断</span>
         </div>
       </div>
     </div>
@@ -232,13 +249,13 @@
     <div class="sheet-backdrop" data-close="sheet-add"></div>
     <div class="sheet">
       <div class="sheet-head">
-        <h3>添加联系人</h3>
-        <button class="icon-btn" data-close="sheet-add" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+        <h3 data-i18n="add.title">添加联系人</h3>
+        <button class="icon-btn" data-close="sheet-add" data-i18n-aria="common.close" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
       </div>
-      <p class="sheet-desc">输入对方的账号（不是昵称），添加后即可互相呼叫与聊天</p>
+      <p class="sheet-desc" data-i18n="add.desc">输入对方的账号（不是昵称），添加后即可互相呼叫与聊天</p>
       <div class="search sheet-search">
         <svg><use href="#i-search"/></svg>
-        <input id="add-search" type="search" placeholder="搜索账号或昵称" autocomplete="off">
+        <input id="add-search" type="search" data-i18n-ph="add.searchPh" placeholder="搜索账号或昵称" autocomplete="off">
       </div>
       <ul class="add-results" id="add-results"></ul>
     </div>
@@ -249,24 +266,38 @@
     <div class="sheet-backdrop" data-close="sheet-settings"></div>
     <div class="sheet">
       <div class="sheet-head">
-        <h3>设置</h3>
-        <button class="icon-btn" data-close="sheet-settings" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+        <h3 data-i18n="settings.title">设置</h3>
+        <button class="icon-btn" data-close="sheet-settings" data-i18n-aria="common.close" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
       </div>
       <div class="setting-profile">
-        <div class="avatar" id="settings-avatar">V</div>
+        <div class="avatar" id="settings-avatar"><svg><use href="#i-logo"/></svg></div>
         <div>
           <strong id="settings-name">—</strong>
           <span id="settings-id">@—</span>
         </div>
       </div>
+      <div class="setting-opts">
+        <span data-i18n="settings.language">语言</span>
+        <div class="seg-mini" id="lang-seg">
+          <button type="button" data-lang="zh" class="active">中文</button>
+          <button type="button" data-lang="en">English</button>
+        </div>
+      </div>
+      <div class="setting-opts">
+        <span data-i18n="settings.theme">外观</span>
+        <div class="seg-mini" id="theme-seg">
+          <button type="button" data-theme-opt="dark" data-i18n="settings.theme.dark">深色</button>
+          <button type="button" data-theme-opt="light" data-i18n="settings.theme.light">浅色</button>
+        </div>
+      </div>
       <ul class="setting-list">
-        <li><span>通话状态</span><em id="settings-net">已连接</em></li>
-        <li><span>设备</span><em id="settings-device">网页端</em></li>
-        <li><span>服务器</span><em id="settings-server">—</em></li>
-        <li class="link" id="btn-server-config" hidden><span>服务器地址</span><svg><use href="#i-arrow"/></svg></li>
-        <li class="link" id="btn-logout"><span class="danger-text">退出登录</span><svg><use href="#i-logout"/></svg></li>
+        <li><span data-i18n="settings.status">通话状态</span><em id="settings-net" data-i18n="net.online">在线</em></li>
+        <li><span data-i18n="settings.device">设备</span><em id="settings-device">网页端</em></li>
+        <li><span data-i18n="settings.server">服务器</span><em id="settings-server">—</em></li>
+        <li class="link" id="btn-server-config" hidden><span data-i18n="settings.serverAddr">服务器地址</span><svg><use href="#i-arrow"/></svg></li>
+        <li class="link" id="btn-logout"><span class="danger-text" data-i18n="settings.logout">退出登录</span><svg><use href="#i-logout"/></svg></li>
       </ul>
-      <p class="sheet-foot">VoiceCall · 局域网语音与聊天</p>
+      <p class="sheet-foot" data-i18n="app.version">VoiceCall · 局域网语音与聊天</p>
     </div>
   </div>
 
