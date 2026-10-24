@@ -95,7 +95,7 @@ npm start
 powershell -ExecutionPolicy Bypass -File android\build.ps1
 ```
 
-产物：`android/out/VoiceCall.apk`（当前版本 1.0.10）。
+产物：`android/out/VoiceCall.apk`（当前版本 1.0.11）。
 
 ### 4. 公网访问（可选）
 
