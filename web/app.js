@@ -7,6 +7,7 @@
 
   const STORAGE_KEY = 'voicecall.session.v1';
   const DEVICE_KEY = 'voicecall.device.v1';
+  const CHAT_READ_KEY = 'voicecall.chatread.v1';
   const bridge = window.AndroidBridge || null;
 
   const state = {
@@ -30,6 +31,9 @@
     callTimer: null,
     answerTimer: null,
     dismissedCalls: new Set(),
+    chat: { peer: null, messages: [], loading: false, typingTimer: null },
+    conversations: new Map(),
+    chatRead: new Map(),
     soundTimer: null,
     vibrateTimer: null,
     audioCtx: null,
@@ -273,6 +277,7 @@
       saveSession();
       await showHome();
       startTransport();
+      loadConversations();
       $('#auth-pwd').value = '';
     } catch (err) {
       setError(err.message);
@@ -310,6 +315,8 @@
     state.token = '';
     state.user = null;
     state.contacts.clear();
+    state.conversations.clear();
+    closeChat();
     setNet(false, '未登录');
     clearSession();
     closeSheet('sheet-settings');
@@ -353,9 +360,18 @@
       const li = el('li', `contact${contact.online ? '' : ' offline'}`);
       const av = el('div', `avatar ${gradientClass(contact.id)}`, initial(contact.name));
       if (contact.online) av.appendChild(el('span', 'dot'));
+      const conv = state.conversations.get(contact.id);
+      const unread = isChatUnread(contact.id);
       const meta = el('div', 'contact-meta');
       meta.appendChild(el('strong', '', contact.name));
-      meta.appendChild(el('span', '', `@${contact.id} · ${contactLabel(contact)}`));
+      const sub = el('span');
+      if (unread) sub.appendChild(el('i', 'chat-unread-dot'));
+      const preview = conv
+        ? `${conv.fromMe ? '我：' : ''}${conv.lastText}`
+        : `@${contact.id} · ${contactLabel(contact)}`;
+      sub.appendChild(document.createTextNode(preview));
+      sub.title = preview;
+      meta.appendChild(sub);
       const call = el('button', 'contact-call');
       call.type = 'button';
       call.setAttribute('aria-label', `呼叫 ${contact.name}`);
@@ -365,6 +381,7 @@
         startCall(contact);
       });
       li.append(av, meta, call);
+      li.addEventListener('click', () => openChat(contact));
       list.appendChild(li);
     }
   }
@@ -374,6 +391,190 @@
     state.contacts.set(contact.id, { ...prev, ...contact });
     renderContacts();
     saveSession();
+    if (state.chat.peer && state.chat.peer.id === contact.id) {
+      state.chat.peer = { ...state.chat.peer, ...contact };
+      updateChatStatus();
+    }
+  }
+
+  // ---------------- 聊天 ----------------
+  function loadChatRead() {
+    try {
+      state.chatRead = new Map(Object.entries(JSON.parse(localStorage.getItem(CHAT_READ_KEY) || '{}')));
+    } catch {
+      state.chatRead = new Map();
+    }
+  }
+
+  function saveChatRead() {
+    try {
+      const obj = {};
+      for (const [key, value] of state.chatRead) obj[key] = value;
+      localStorage.setItem(CHAT_READ_KEY, JSON.stringify(obj));
+    } catch { /* 忽略 */ }
+  }
+
+  function markChatRead(id) {
+    if (!id) return;
+    state.chatRead.set(id, Date.now());
+    saveChatRead();
+  }
+
+  function isChatUnread(id) {
+    const conv = state.conversations.get(id);
+    if (!conv || conv.fromMe) return false;
+    return conv.lastAt > (state.chatRead.get(id) || 0);
+  }
+
+  function updateConversation(message) {
+    if (!message || !message.from || !message.to) return;
+    const mine = Boolean(state.user && message.from === state.user.id);
+    const peerId = mine ? message.to : message.from;
+    state.conversations.set(peerId, {
+      id: peerId,
+      lastAt: message.at || Date.now(),
+      lastText: message.text || '',
+      fromMe: mine
+    });
+  }
+
+  async function loadConversations() {
+    if (!state.token) return;
+    try {
+      const data = await api('/api/conversations');
+      state.conversations = new Map((data.conversations || []).map((c) => [c.id, c]));
+      renderContacts();
+    } catch { /* 忽略 */ }
+  }
+
+  function chatDay(ts) {
+    const date = new Date(ts);
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    if (ts >= start) return '今天';
+    if (ts >= start - 86400000) return '昨天';
+    return `${date.getMonth() + 1}月${date.getDate()}日`;
+  }
+
+  function chatTime(ts) {
+    const d = new Date(ts);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function renderMessages() {
+    const list = $('#chat-messages');
+    list.textContent = '';
+    let lastDay = '';
+    for (const m of state.chat.messages) {
+      const day = chatDay(m.at);
+      if (day !== lastDay) {
+        lastDay = day;
+        list.appendChild(el('li', 'chat-day', day));
+      }
+      const mine = Boolean(state.user && m.from === state.user.id);
+      const li = el('li', `msg ${mine ? 'mine' : 'theirs'}${m.pending ? ' pending' : ''}${m.failed ? ' failed' : ''}`);
+      li.appendChild(el('div', 'bubble', m.text));
+      li.appendChild(el('time', '', m.failed ? '发送失败' : (m.pending ? '发送中…' : chatTime(m.at))));
+      list.appendChild(li);
+    }
+    $('#chat-empty').classList.toggle('hidden', state.chat.messages.length > 0);
+  }
+
+  function scrollChatBottom() {
+    requestAnimationFrame(() => {
+      const body = $('#chat-body');
+      if (body) body.scrollTop = body.scrollHeight;
+    });
+  }
+
+  function updateSendButton() {
+    $('#chat-send').disabled = !$('#chat-input').value.trim();
+  }
+
+  function updateChatStatus() {
+    if (!state.chat.peer) return;
+    $('#chat-status').textContent = state.chat.peer.online ? '在线' : '离线';
+  }
+
+  async function openChat(contact) {
+    if (!contact) return;
+    state.chat.peer = contact;
+    state.chat.messages = [];
+    state.chat.loading = true;
+    $('#chat').classList.remove('hidden');
+    $('#chat-name').textContent = contact.name;
+    paintAvatar($('#chat-avatar'), contact.name, contact.id);
+    updateChatStatus();
+    $('#chat-messages').textContent = '';
+    $('#chat-empty').textContent = '加载中…';
+    $('#chat-empty').classList.remove('hidden');
+    $('#chat-input').value = '';
+    updateSendButton();
+
+    try {
+      const data = await api(`/api/messages?with=${encodeURIComponent(contact.id)}&limit=100`);
+      if (!state.chat.peer || state.chat.peer.id !== contact.id) return;
+      state.chat.messages = (data.messages || []).map((m) => ({ ...m }));
+    } catch (err) {
+      toast(err.message || '无法加载聊天记录');
+    }
+    state.chat.loading = false;
+    $('#chat-empty').textContent = '还没有消息，打个招呼吧';
+    renderMessages();
+    markChatRead(contact.id);
+    renderContacts();
+    scrollChatBottom();
+    setTimeout(() => { $('#chat-input').focus(); }, 120);
+  }
+
+  function closeChat() {
+    $('#chat').classList.add('hidden');
+    clearTimeout(state.chat.typingTimer);
+    state.chat.typingTimer = null;
+    state.chat.peer = null;
+    state.chat.messages = [];
+    state.chat.loading = false;
+  }
+
+  function sendChat() {
+    const input = $('#chat-input');
+    const text = input.value.trim();
+    const peer = state.chat.peer;
+    if (!text || !peer || !state.user) return;
+    const clientId = `m_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const message = {
+      id: clientId,
+      clientId,
+      from: state.user.id,
+      to: peer.id,
+      text,
+      at: Date.now(),
+      pending: true
+    };
+    state.chat.messages.push(message);
+    input.value = '';
+    updateSendButton();
+    renderMessages();
+    scrollChatBottom();
+    send({ type: 'chat:send', to: peer.id, text, clientId });
+  }
+
+  let lastTypingSent = 0;
+  function sendTyping() {
+    if (!state.chat.peer) return;
+    const now = Date.now();
+    if (now - lastTypingSent < 2000) return;
+    lastTypingSent = now;
+    send({ type: 'chat:typing', to: state.chat.peer.id });
+  }
+
+  function showPeerTyping() {
+    if (!state.chat.peer) return;
+    $('#chat-status').textContent = '正在输入…';
+    clearTimeout(state.chat.typingTimer);
+    state.chat.typingTimer = setTimeout(() => {
+      if (state.chat.peer) updateChatStatus();
+    }, 3000);
   }
 
   // ---------------- 添加联系人 ----------------
@@ -387,7 +588,12 @@
   }
 
   function closeSheet(id) {
-    $(`#${id}`).classList.add('hidden');
+    if (id === 'chat') {
+      closeChat();
+      return;
+    }
+    const node = $(`#${id}`);
+    if (node) node.classList.add('hidden');
   }
 
   function renderAddResults(users) {
@@ -904,6 +1110,50 @@
         if (existing) upsertContact({ ...existing, name: msg.user.name, online: Boolean(msg.online) });
         break;
       }
+      case 'chat:conversations': {
+        if (Array.isArray(msg.conversations)) {
+          state.conversations = new Map(msg.conversations.map((c) => [c.id, c]));
+          renderContacts();
+        }
+        break;
+      }
+      case 'chat:message': {
+        const message = msg.message;
+        if (!message || !message.id) break;
+        updateConversation(message);
+        if (state.user && message.from === state.user.id) break;
+        if (state.chat.peer && state.chat.peer.id === message.from) {
+          state.chat.messages.push(message);
+          renderMessages();
+          scrollChatBottom();
+          markChatRead(message.from);
+          renderContacts();
+        } else {
+          renderContacts();
+          const peer = state.contacts.get(message.from);
+          toast(`新消息 · ${peer ? peer.name : message.from}`);
+        }
+        break;
+      }
+      case 'chat:sent': {
+        const message = msg.message;
+        if (!message || !message.id) break;
+        updateConversation(message);
+        if (state.chat.peer && state.chat.peer.id === message.to) {
+          const index = state.chat.messages.findIndex((item) => item.clientId === msg.clientId
+            || (item.pending && item.text === message.text));
+          if (index >= 0) state.chat.messages[index] = { ...message };
+          else state.chat.messages.push({ ...message });
+          renderMessages();
+          scrollChatBottom();
+        }
+        renderContacts();
+        break;
+      }
+      case 'chat:typing': {
+        if (msg.from && state.chat.peer && state.chat.peer.id === msg.from.id) showPeerTyping();
+        break;
+      }
       case 'pong':
         break;
       case 'call:incoming': {
@@ -1035,9 +1285,20 @@
           busy_peer: '对方正在通话中',
           not_contact: '请先添加对方为联系人',
           not_found: '联系人不存在',
-          no_session: '登录状态已失效'
+          no_session: '登录状态已失效',
+          empty: '消息不能为空',
+          too_long: '消息不能超过 2000 字',
+          self: '不能给自己发消息'
         };
         toast(messages[msg.code] || msg.message || '操作失败');
+        if (msg.clientId) {
+          const item = state.chat.messages.find((m) => m.clientId === msg.clientId);
+          if (item) {
+            item.pending = false;
+            item.failed = true;
+            renderMessages();
+          }
+        }
         if (msg.callId) {
           resetCallState();
         }
@@ -1146,6 +1407,22 @@
         toast('通话未能建立');
         hangup('failed');
       }, 30000);
+    },
+    /** 安卓返回键：优先关闭页面上的弹层，返回 true 表示已消费。 */
+    handleBack() {
+      if (!$('#chat').classList.contains('hidden')) {
+        closeChat();
+        return true;
+      }
+      if (!$('#sheet-add').classList.contains('hidden')) {
+        closeSheet('sheet-add');
+        return true;
+      }
+      if (!$('#sheet-settings').classList.contains('hidden')) {
+        closeSheet('sheet-settings');
+        return true;
+      }
+      return false;
     }
   };
 
@@ -1157,6 +1434,20 @@
     });
     $('#auth-form').addEventListener('submit', submitAuth);
     $('#contact-search').addEventListener('input', renderContacts);
+    $('#chat-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      sendChat();
+    });
+    $('#chat-input').addEventListener('input', () => {
+      updateSendButton();
+      sendTyping();
+    });
+    $('#chat-call').addEventListener('click', () => {
+      const peer = state.chat.peer;
+      if (!peer) return;
+      closeChat();
+      startCall(peer);
+    });
     $('#btn-add').addEventListener('click', () => openSheet('sheet-add'));
     $('#add-search').addEventListener('input', searchUsers);
     $('#btn-settings').addEventListener('click', () => openSheet('sheet-settings'));
@@ -1173,6 +1464,7 @@
       if (event.key === 'Escape') {
         closeSheet('sheet-add');
         closeSheet('sheet-settings');
+        closeChat();
       }
     });
 
@@ -1222,6 +1514,7 @@
     buildWaveBars();
     bindEvents();
     setAuthMode('login');
+    loadChatRead();
 
     try {
       state.deviceId = localStorage.getItem(DEVICE_KEY) || '';
@@ -1263,6 +1556,7 @@
       saveSession();
       await showHome();
       startTransport();
+      loadConversations();
     } catch (err) {
       state.token = '';
       clearSession();

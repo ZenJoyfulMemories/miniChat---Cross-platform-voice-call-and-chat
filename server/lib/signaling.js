@@ -112,6 +112,7 @@ class Signaling {
         || (call.callee && call.callee.uid === uid);
       if (involved) this.flushPending(call, conn);
     }
+    this.send(conn, { type: 'chat:conversations', conversations: this.store.conversationsFor(uid) });
     if (isFirstDevice) this.broadcastPresence(user, true);
   }
 
@@ -219,6 +220,10 @@ class Signaling {
       }
       case 'call:invite':
         return this.invite(conn, msg);
+      case 'chat:send':
+        return this.chatSend(conn, msg);
+      case 'chat:typing':
+        return this.chatTyping(conn, msg);
       case 'call:accept':
         return this.accept(conn, msg);
       case 'call:reject':
@@ -249,6 +254,36 @@ class Signaling {
       if (call.caller.uid === uid || (call.callee && call.callee.uid === uid)) return call;
     }
     return null;
+  }
+
+  // ---------------- 聊天 ----------------
+
+  chatSend(conn, msg) {
+    const user = this.store.get(conn.uid);
+    const toId = String(msg.to || '').trim().toLowerCase();
+    const text = String(msg.text || '').trim();
+    const target = this.store.get(toId);
+    const clientId = typeof msg.clientId === 'string' ? msg.clientId : '';
+
+    if (!target) return this.fail(conn, 'not_found', '联系人不存在', { clientId });
+    if (toId === conn.uid) return this.fail(conn, 'self', '不能给自己发消息', { clientId });
+    if (!this.store.isContact(user, toId)) {
+      return this.fail(conn, 'not_contact', '请先添加对方为联系人', { clientId });
+    }
+    if (!text) return this.fail(conn, 'empty', '消息不能为空', { clientId });
+    if (text.length > 2000) return this.fail(conn, 'too_long', '消息不能超过 2000 字', { clientId });
+
+    const message = this.store.addMessage(conn.uid, toId, text);
+    this.sendUser(conn.uid, { type: 'chat:sent', message, clientId });
+    this.sendUser(toId, { type: 'chat:message', message, from: { id: user.id, name: user.name } });
+    this.log.info?.(`[chat] ${conn.uid} -> ${toId} ${message.id}`);
+  }
+
+  chatTyping(conn, msg) {
+    const toId = String(msg.to || '').trim().toLowerCase();
+    const user = this.store.get(conn.uid);
+    if (!user || !this.store.get(toId) || !this.store.isContact(user, toId)) return;
+    this.sendUser(toId, { type: 'chat:typing', from: { id: user.id, name: user.name } });
   }
 
   invite(conn, msg) {

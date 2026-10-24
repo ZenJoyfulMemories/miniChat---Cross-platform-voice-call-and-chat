@@ -253,6 +253,39 @@ async function handleApi(req, res, url) {
     });
   }
 
+  if (method === 'GET' && p === '/api/messages') {
+    return withUser(() => {
+      const user = requireUser(req);
+      const withId = String(url.searchParams.get('with') || '').trim().toLowerCase();
+      const peer = store.get(withId);
+      if (!peer) throw new HttpError(404, 'not_found', '联系人不存在');
+      if (!store.isContact(user, peer.id) && !store.isContact(peer, user.id)) {
+        throw new HttpError(403, 'not_contact', '只能查看联系人的消息');
+      }
+      const before = Number(url.searchParams.get('before')) || 0;
+      const limit = Math.max(1, Math.min(100, Number(url.searchParams.get('limit')) || 60));
+      const messages = store.conversation(user.id, peer.id, { limit, before });
+      return sendJson(res, 200, {
+        peer: { ...store.publicUser(peer), online: signaling.isOnline(peer.id) },
+        messages,
+        hasMore: messages.length >= limit
+      });
+    });
+  }
+
+  if (method === 'GET' && p === '/api/conversations') {
+    return withUser(() => {
+      const user = requireUser(req);
+      const conversations = store.conversationsFor(user.id)
+        .map((item) => {
+          const peer = store.get(item.id);
+          return peer ? { ...item, name: peer.name, online: signaling.isOnline(peer.id) } : null;
+        })
+        .filter(Boolean);
+      return sendJson(res, 200, { conversations });
+    });
+  }
+
   if (method === 'GET' && p === '/api/ice') {
     return withUser(() => {
       requireUser(req);

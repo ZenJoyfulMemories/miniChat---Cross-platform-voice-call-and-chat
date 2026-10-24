@@ -223,7 +223,7 @@ public class SetupActivity extends Activity {
         tipsParams.topMargin = Ui.dp(this, 26);
         root.addView(tips, tipsParams);
 
-        TextView version = Ui.text(this, "安卓客户端 1.0.5", 11, Ui.FAINT);
+        TextView version = Ui.text(this, "安卓客户端 1.0.6", 11, Ui.FAINT);
         version.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams versionParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT

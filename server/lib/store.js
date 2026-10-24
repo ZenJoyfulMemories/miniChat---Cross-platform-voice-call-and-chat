@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 
 const USER_ID_RE = /^[a-zA-Z0-9_.-]{3,32}$/;
 const MAX_CONTACTS = 300;
+const MAX_MESSAGES = 10000;
 
 class HttpError extends Error {
   constructor(status, code, message) {
@@ -24,8 +25,10 @@ function scrypt(password, salt) {
 class Store {
   constructor(dataDir) {
     this.file = path.join(dataDir, 'users.json');
+    this.messageFile = path.join(dataDir, 'messages.json');
     fs.mkdirSync(dataDir, { recursive: true });
     this.users = new Map();
+    this.messages = [];
     this.saveTimer = null;
     this.load();
   }
@@ -36,6 +39,12 @@ class Store {
       for (const user of raw.users || []) this.users.set(user.id, user);
     } catch (err) {
       if (err.code !== 'ENOENT') console.error('[store] 读取用户数据失败:', err.message);
+    }
+    try {
+      const raw = JSON.parse(fs.readFileSync(this.messageFile, 'utf8'));
+      if (Array.isArray(raw.messages)) this.messages = raw.messages;
+    } catch (err) {
+      if (err.code !== 'ENOENT') console.error('[store] 读取消息数据失败:', err.message);
     }
   }
 
@@ -51,6 +60,10 @@ class Store {
     const payload = JSON.stringify({ version: 1, users: [...this.users.values()] }, null, 2);
     fs.writeFileSync(tmp, payload, 'utf8');
     fs.renameSync(tmp, this.file);
+
+    const msgTmp = `${this.messageFile}.tmp`;
+    fs.writeFileSync(msgTmp, JSON.stringify({ version: 1, messages: this.messages }), 'utf8');
+    fs.renameSync(msgTmp, this.messageFile);
   }
 
   get(id) {
@@ -134,6 +147,55 @@ class Store {
     owner.contacts = owner.contacts.filter((id) => id !== String(contactId));
     this.save();
     return this.contactsOf(owner);
+  }
+
+  // ---------------- 聊天消息 ----------------
+
+  addMessage(fromId, toId, text) {
+    const message = {
+      id: crypto.randomBytes(8).toString('hex'),
+      from: fromId,
+      to: toId,
+      text,
+      at: Date.now()
+    };
+    this.messages.push(message);
+    if (this.messages.length > MAX_MESSAGES) {
+      this.messages.splice(0, this.messages.length - MAX_MESSAGES);
+    }
+    this.save();
+    return message;
+  }
+
+  conversation(a, b, { limit = 60, before = 0 } = {}) {
+    const out = [];
+    const max = Math.max(1, Math.min(100, Number(limit) || 60));
+    for (let i = this.messages.length - 1; i >= 0; i -= 1) {
+      const msg = this.messages[i];
+      if (!((msg.from === a && msg.to === b) || (msg.from === b && msg.to === a))) continue;
+      if (before && msg.at >= before) continue;
+      out.push(msg);
+      if (out.length >= max) break;
+    }
+    return out.reverse();
+  }
+
+  conversationsFor(uid) {
+    const map = new Map();
+    for (const msg of this.messages) {
+      if (msg.from !== uid && msg.to !== uid) continue;
+      const peerId = msg.from === uid ? msg.to : msg.from;
+      const prev = map.get(peerId);
+      if (!prev || msg.at > prev.lastAt) {
+        map.set(peerId, {
+          id: peerId,
+          lastAt: msg.at,
+          lastText: msg.text,
+          fromMe: msg.from === uid
+        });
+      }
+    }
+    return [...map.values()].sort((x, y) => y.lastAt - x.lastAt);
   }
 
   search(ownerId, keyword) {

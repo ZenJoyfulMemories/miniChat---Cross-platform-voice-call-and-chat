@@ -49,8 +49,10 @@ public class CallService extends Service {
 
     private static final String CH_SERVICE = "voicecall.service";
     static final String CH_CALL = "voicecall.incoming";
+    private static final String CH_CHAT = "voicecall.chat";
     private static final int NOTIF_SERVICE = 1001;
     private static final int NOTIF_CALL = 1002;
+    private static final int NOTIF_CHAT = 1003;
 
     private static volatile CallService instance;
 
@@ -295,6 +297,20 @@ public class CallService extends Service {
             return;
         }
 
+        if ("chat:message".equals(type)) {
+            Bridge.deliver(text);
+            if (!Bridge.canShowUi()) {
+                final JSONObject chatMsg = msg;
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showChatNotification(chatMsg);
+                    }
+                });
+            }
+            return;
+        }
+
         if ("call:incoming".equals(type)) {
             if (ringingCallId != null) {
                 try {
@@ -469,6 +485,40 @@ public class CallService extends Service {
             manager.cancel(NOTIF_CALL);
         } catch (Exception ignored) {
             // 忽略
+        }
+    }
+
+    /** 应用不在前台时，新消息用系统通知提醒。 */
+    private void showChatNotification(JSONObject msg) {
+        try {
+            JSONObject message = msg.optJSONObject("message");
+            if (message == null) return;
+            JSONObject from = msg.optJSONObject("from");
+            String name = from == null ? "" : from.optString("name");
+            if (name.isEmpty()) name = "新消息";
+            String text = message.optString("text");
+            if (text.isEmpty()) return;
+
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent pending = PendingIntent.getActivity(this, 31, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+            Notification.Builder builder = new Notification.Builder(this, CH_CHAT)
+                .setSmallIcon(R.drawable.ic_notify)
+                .setContentTitle(name)
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setCategory(Notification.CATEGORY_MESSAGE)
+                .setPriority(Notification.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setColor(0xFF6EA8FF)
+                .setContentIntent(pending);
+
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            manager.notify(NOTIF_CHAT, builder.build());
+        } catch (Exception ignored) {
+            // 通知失败不影响消息投递
         }
     }
 
@@ -716,6 +766,12 @@ public class CallService extends Service {
         call.setSound(null, null);
         call.enableVibration(false);
         manager.createNotificationChannel(call);
+
+        NotificationChannel chat = new NotificationChannel(CH_CHAT, "聊天消息", NotificationManager.IMPORTANCE_HIGH);
+        chat.setDescription("收到新消息时提醒");
+        chat.setShowBadge(true);
+        chat.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        manager.createNotificationChannel(chat);
     }
 
     private Notification serviceNotification() {

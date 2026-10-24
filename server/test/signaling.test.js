@@ -142,6 +142,26 @@ async function main() {
   assert.equal(presence.user.id, 'bob');
   log('在线状态实时推送');
 
+  aliceWs.send({ type: 'chat:send', to: 'bob', text: '你好 Bob', clientId: 'c1' });
+  const chatSent = await aliceWs.next('chat:sent');
+  assert.equal(chatSent.message.text, '你好 Bob');
+  assert.equal(chatSent.clientId, 'c1');
+  const chatIncoming = await bobWs.next('chat:message');
+  assert.equal(chatIncoming.message.from, 'alice');
+  assert.equal(chatIncoming.message.to, 'bob');
+  assert.equal(chatIncoming.from.name, 'Alice');
+  log('聊天消息实时送达');
+
+  const history = await api('/api/messages?with=bob', { token: alice.data.token });
+  assert.equal(history.status, 200);
+  assert.equal(history.data.messages.length, 1);
+  assert.equal(history.data.messages[0].text, '你好 Bob');
+  const conversations = await api('/api/conversations', { token: bob.data.token });
+  assert.equal(conversations.status, 200);
+  assert.equal(conversations.data.conversations[0].id, 'alice');
+  assert.equal(conversations.data.conversations[0].lastText, '你好 Bob');
+  log('聊天历史与会话摘要');
+
   aliceWs.send({ type: 'call:invite', callId: 'call-test-1', to: 'bob', mode: 'audio' });
   const ringing = await aliceWs.next('call:ringing');
   const incoming = await bobWs.next('call:incoming');

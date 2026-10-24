@@ -19,6 +19,7 @@ import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -300,7 +301,20 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        moveTaskToBack(true);
+        if (web == null) {
+            super.onBackPressed();
+            return;
+        }
+        // 先让页面关闭聊天/弹层，页面没有可关闭内容时才退到后台
+        web.evaluateJavascript(
+            "(function(){try{return window.VC&&window.VC.handleBack?window.VC.handleBack():false}catch(e){return false}})()",
+            new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    if (!"true".equals(value)) moveTaskToBack(true);
+                }
+            }
+        );
     }
 
     /** JS 通过 window.AndroidBridge 调用的原生能力。 */
