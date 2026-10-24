@@ -430,6 +430,9 @@
     localStream: null,
     remoteStream: null,
     pendingCandidates: [],
+    localCandidates: [],
+    remoteCandidates: 0,
+    iceRestartTimer: null,
     micPromise: null,
     callTimer: null,
     answerTimer: null,
@@ -1561,6 +1564,24 @@
     }
   }
 
+  /** 通话诊断：把关键步骤写到服务端日志，便于定位协商卡住的位置。 */
+  function traceCall(label, detail) {
+    if (!state.call) return;
+    const payload = {
+      type: 'call:trace',
+      callId: state.call.id,
+      label,
+      detail: detail || ''
+    };
+    if (bridge) {
+      try { bridge.send(JSON.stringify(payload)); } catch { /* 忽略 */ }
+      return;
+    }
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+      try { state.ws.send(JSON.stringify(payload)); } catch { /* 忽略 */ }
+    }
+  }
+
   function createPeer(role) {
     if (state.pc) {
       try { state.pc.close(); } catch { /* 忽略 */ }
@@ -1573,13 +1594,26 @@
     });
     state.pc = pc;
     state.pendingCandidates = [];
+    state.localCandidates = [];
+    state.remoteCandidates = 0;
+    clearTimeout(state.iceRestartTimer);
+    state.iceRestartTimer = null;
 
     if (role === 'caller' && state.localStream) {
       for (const track of state.localStream.getAudioTracks()) pc.addTrack(track, state.localStream);
     }
 
     pc.onicecandidate = (event) => {
-      if (event.candidate) send({ type: 'call:ice', callId: state.call && state.call.id, candidate: event.candidate.toJSON() });
+      if (!event.candidate) {
+        traceCall('ice-complete');
+        return;
+      }
+      const candidate = event.candidate.toJSON();
+      state.localCandidates.push(candidate);
+      if (state.localCandidates.length <= 2 || state.localCandidates.length % 5 === 0) {
+        traceCall('ice-local', `#${state.localCandidates.length}`);
+      }
+      send({ type: 'call:ice', callId: state.call && state.call.id, candidate });
     };
 
     pc.ontrack = (event) => {
@@ -1593,6 +1627,7 @@
 
     pc.onconnectionstatechange = () => {
       if (!state.call) return;
+      traceCall('pc-state', pc.connectionState);
       if (pc.connectionState === 'connected') markConnected();
       if (pc.connectionState === 'failed') {
         toast(t('toast.voiceFailed'));
@@ -1603,6 +1638,7 @@
     pc.oniceconnectionstatechange = () => {
       if (!state.call) return;
       const s = pc.iceConnectionState;
+      traceCall('ice-state', s);
       if (s === 'connected' || s === 'completed') markConnected();
     };
 
@@ -1638,6 +1674,19 @@
     for (const candidate of pending) {
       state.pc.addIceCandidate(candidate).catch(() => {});
     }
+  }
+
+  /** 连接重建后补发本地 SDP 与已收集的 ICE，避免锁屏/切网期间丢包导致协商中断。 */
+  function resendLocalMedia() {
+    if (!state.call || !state.pc) return;
+    const desc = state.pc.localDescription;
+    if (desc) {
+      send({ type: 'call:sdp', callId: state.call.id, sdp: desc });
+    }
+    for (const candidate of state.localCandidates) {
+      send({ type: 'call:ice', callId: state.call.id, candidate });
+    }
+    traceCall('resend', `sdp=${desc ? desc.type : 'none'} ice=${state.localCandidates.length} remote=${state.remoteCandidates}`);
   }
 
   // ---------------- 呼叫流程 ----------------
@@ -1731,6 +1780,10 @@
     state.pc = null;
     state.remoteStream = null;
     state.pendingCandidates = [];
+    state.localCandidates = [];
+    state.remoteCandidates = 0;
+    clearTimeout(state.iceRestartTimer);
+    state.iceRestartTimer = null;
     const audio = $('#remote-audio');
     audio.srcObject = null;
     state.call = null;
@@ -1876,15 +1929,30 @@
           const offer = await pc.createOffer({ offerToReceiveAudio: true });
           await pc.setLocalDescription(offer);
           send({ type: 'call:sdp', callId: state.call.id, sdp: pc.localDescription });
+          traceCall('offer-sent');
           // 发完 offer 迟迟收不到 answer 时主动结束，避免界面卡在“正在接通”
           clearTimeout(state.answerTimer);
           const callId = state.call.id;
           state.answerTimer = setTimeout(() => {
             if (!state.call || state.call.id !== callId || state.call.phase === 'active') return;
             if (state.pc && state.pc.remoteDescription) return;
+            traceCall('answer-timeout');
             toast(t('toast.callNotEstablished'));
             hangup('failed');
-          }, 20000);
+          }, 35000);
+          // 已收到 answer 但 ICE 一直未连通时，触发一次 ICE 重启，重新收集并补发候选
+          clearTimeout(state.iceRestartTimer);
+          state.iceRestartTimer = setTimeout(async () => {
+            if (!state.call || state.call.id !== callId || state.call.phase === 'active') return;
+            if (!state.pc || !state.pc.remoteDescription) return;
+            if (['connected', 'completed'].includes(state.pc.iceConnectionState)) return;
+            try {
+              const next = await state.pc.createOffer({ iceRestart: true });
+              await state.pc.setLocalDescription(next);
+              send({ type: 'call:sdp', callId, sdp: state.pc.localDescription });
+              traceCall('ice-restart');
+            } catch { /* 忽略重启失败 */ }
+          }, 8000);
         } catch (err) {
           toast(t('toast.callFailed'));
           hangup('failed');
@@ -1942,11 +2010,21 @@
         const sdp = msg.sdp;
         if (!sdp || !sdp.type) break;
         if (sdp.type === 'offer') {
+          if (state.pc && state.pc.remoteDescription && state.pc.remoteDescription.sdp === sdp.sdp) {
+            traceCall('offer-duplicate');
+            break;
+          }
+          traceCall('offer-recv');
           await handleOffer(sdp);
         } else if (sdp.type === 'answer') {
+          if (state.pc && state.pc.remoteDescription && state.pc.remoteDescription.sdp === sdp.sdp) {
+            traceCall('answer-duplicate');
+            break;
+          }
           try {
             if (state.pc) {
               await state.pc.setRemoteDescription(sdp);
+              traceCall('answer-recv');
               flushCandidates();
               clearTimeout(state.answerTimer);
               state.answerTimer = null;
@@ -1961,6 +2039,10 @@
       case 'call:ice': {
         if (!state.call || state.call.id !== msg.callId || !msg.candidate) break;
         const candidate = msg.candidate;
+        state.remoteCandidates += 1;
+        if (state.remoteCandidates === 1 || state.remoteCandidates % 10 === 0) {
+          traceCall('ice-remote', `#${state.remoteCandidates}`);
+        }
         if (state.pc && state.pc.remoteDescription) {
           state.pc.addIceCandidate(candidate).catch(() => {});
         } else {
@@ -2007,8 +2089,10 @@
       return;
     }
     const call = state.call;
+    call.role = 'callee';
     try {
       await ensureMic();
+      traceCall('mic-ready');
     } catch (err) {
       send({ type: 'call:hangup', callId: call.id });
       resetCallState();
@@ -2026,6 +2110,7 @@
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       send({ type: 'call:sdp', callId: call.id, sdp: pc.localDescription });
+      traceCall('answer-sent');
       state.call.phase = 'connecting';
       showCallOverlay(state.call.peer, 'connecting');
       startSound('connect');
@@ -2040,9 +2125,10 @@
       // 一直停在“正在接通”说明协商失败（对端可能已挂断），避免界面卡死
       setTimeout(() => {
         if (!state.call || state.call.id !== call.id || state.call.phase === 'active') return;
+        traceCall('callee-timeout');
         toast(t('toast.callNotEstablished'));
         hangup('failed');
-      }, 30000);
+      }, 40000);
     } catch {
       toast(t('toast.voiceNegotiation'));
       hangup('failed');
@@ -2058,9 +2144,12 @@
     },
     onTransportState(online) {
       setNet(Boolean(online), online ? 'net.connected' : 'net.serviceOffline');
+      traceCall('transport', online ? 'online' : 'offline');
       // 服务重连后核对当前通话是否还存在于服务器，避免界面卡在已失效的通话
       if (online && state.call) {
         send({ type: 'call:status', callId: state.call.id });
+        // 锁屏/切网重连后补发本地 SDP 与 ICE，避免协商数据在断线窗口丢失
+        resendLocalMedia();
       }
     },
     onPendingAccept(json) {
@@ -2082,11 +2171,13 @@
         muted: false,
         acceptedNatively: true
       };
+      traceCall('pending-takeover');
       showCallOverlay(state.call.peer, 'connecting');
       if (bridge) {
         try { bridge.setCallState(true); } catch { /* 忽略 */ }
       }
-      ensureMic().catch((err) => {
+      ensureMic().then(() => traceCall('mic-ready')).catch((err) => {
+        traceCall('mic-failed', err && err.message ? err.message : '');
         toast(err.message || t('toast.micDenied'));
         send({ type: 'call:hangup', callId: state.call && state.call.id });
         resetCallState();
@@ -2094,9 +2185,10 @@
       // 接管后迟迟没有 SDP/ICE，自动结束，避免停在“正在接通”
       setTimeout(() => {
         if (!state.call || state.call.id !== pendingId || state.call.phase === 'active') return;
+        traceCall('pending-timeout');
         toast(t('toast.callNotEstablished'));
         hangup('failed');
-      }, 30000);
+      }, 40000);
     },
     /** 安卓返回键：优先关闭页面上的弹层，返回 true 表示已消费。 */
     handleBack() {

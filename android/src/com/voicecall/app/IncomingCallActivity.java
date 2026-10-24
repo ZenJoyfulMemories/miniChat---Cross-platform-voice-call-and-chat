@@ -240,6 +240,7 @@ public class IncomingCallActivity extends Activity {
     private void openCallScreen() {
         Intent main = new Intent(this, MainActivity.class);
         main.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        main.putExtra("fromAnswer", true);
         try {
             startActivity(main);
         } catch (Exception ignored) {

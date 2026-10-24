@@ -235,6 +235,9 @@ class Signaling {
       case 'call:sdp':
       case 'call:ice':
         return this.relay(conn, msg);
+      case 'call:trace':
+        this.log.info?.(`[trace] ${new Date().toISOString().slice(11, 23)} ${msg.callId || '-'} ${conn.uid} ${msg.label || '?'}${msg.detail ? ' ' + msg.detail : ''}`);
+        return;
       default:
         return this.fail(conn, 'unknown_type', `未知消息类型 ${msg.type}`);
     }
@@ -382,7 +385,7 @@ class Signaling {
     call.sdpTimer = setTimeout(() => {
       if (this.calls.get(call.id) !== call || call.state !== 'active' || call.sdpSeen) return;
       this.endCall(call, 'timeout', null);
-    }, 25000);
+    }, 40000);
     call.sdpTimer.unref?.();
     this.log.info?.(`[call] ${call.id} ${conn.uid} 接听`);
   }

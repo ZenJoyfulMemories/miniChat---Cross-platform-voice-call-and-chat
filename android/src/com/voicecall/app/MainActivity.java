@@ -1,6 +1,7 @@
 package com.voicecall.app;
 
 import android.app.Activity;
+import android.app.KeyguardManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -86,6 +87,12 @@ public class MainActivity extends Activity {
         getWindow().setBackgroundDrawable(new ColorDrawable(Ui.BG));
         getWindow().setStatusBarColor(Ui.BG);
         getWindow().setNavigationBarColor(Ui.BG);
+
+        // 从锁屏原生界面接听后，让网页通话界面也能覆盖锁屏并保持前台，避免协商被系统挂起
+        if (getIntent().getBooleanExtra("fromAnswer", false)) {
+            applyCallLockFlags(true);
+            getIntent().removeExtra("fromAnswer");
+        }
 
         if (Prefs.hasSession(this)) CallService.start(this);
 
@@ -395,6 +402,39 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** 通话期间允许界面覆盖锁屏，保证锁屏接听后 WebRTC 协商不被系统中断。 */
+    private void applyCallLockFlags(boolean on) {
+        if (on) {
+            if (Build.VERSION.SDK_INT >= 27) {
+                setShowWhenLocked(true);
+                setTurnScreenOn(true);
+            } else {
+                getWindow().addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                        | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                );
+            }
+            if (Build.VERSION.SDK_INT >= 26) {
+                try {
+                    KeyguardManager keyguard = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                    if (keyguard != null && keyguard.isKeyguardLocked()) {
+                        keyguard.requestDismissKeyguard(this, null);
+                    }
+                } catch (Exception ignored) {
+                    // 忽略
+                }
+            }
+        } else if (Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(false);
+            setTurnScreenOn(false);
+        } else {
+            getWindow().clearFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                    | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            );
+        }
+    }
+
     private void updateKeepScreenOn(boolean active) {
         keepScreenOn = active;
         if (active) {
@@ -403,6 +443,17 @@ public class MainActivity extends Activity {
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             if (web != null) web.setKeepScreenOn(false);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent == null) return;
+        setIntent(intent);
+        if (intent.getBooleanExtra("fromAnswer", false)) {
+            applyCallLockFlags(true);
+            intent.removeExtra("fromAnswer");
         }
     }
 
@@ -475,7 +526,7 @@ public class MainActivity extends Activity {
         public void onLogin(final String token, String userId, String userName) {
             Prefs.setSession(MainActivity.this, token, userId, userName);
             if (CallService.get() == null) CallService.start(MainActivity.this);
-            else CallService.get().reconnect();
+            else CallService.get().ensureConnected();
         }
 
         @JavascriptInterface
@@ -507,6 +558,7 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     updateKeepScreenOn(active);
+                    applyCallLockFlags(active);
                 }
             });
         }

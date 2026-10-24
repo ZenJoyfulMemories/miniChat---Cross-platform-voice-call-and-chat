@@ -203,6 +203,14 @@ public class CallService extends Service {
         connect();
     }
 
+    /** 仅在连接确实不可用时重连，避免页面每次启动都打断正在协商的通话。 */
+    void ensureConnected() {
+        SocketClient current = client;
+        if (current != null && current.isOpen() && !current.isClosed()) return;
+        retry = 0;
+        connect();
+    }
+
     private void connect() {
         handler.removeCallbacks(connectTask);
         if (Prefs.token(this).isEmpty()) return;
