@@ -28,6 +28,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -192,15 +193,19 @@ public class MainActivity extends Activity {
         center.setOrientation(LinearLayout.VERTICAL);
         center.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        TextView mark = Ui.text(this, "语音聊天", 23, Ui.TEXT);
-        mark.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
-        center.addView(mark);
+        ProgressBar spinner = new ProgressBar(this);
+        spinner.setIndeterminate(true);
+        spinner.getIndeterminateDrawable().setTint(0xFFB9A4FF);
+        LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(
+            Ui.dp(this, 34), Ui.dp(this, 34)
+        );
+        center.addView(spinner, spinnerParams);
 
-        TextView hint = Ui.text(this, "正在连接…", 12, Ui.FAINT);
+        TextView hint = Ui.text(this, "正在连接…", 12, Ui.MUTED);
         LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        hintParams.topMargin = Ui.dp(this, 10);
+        hintParams.topMargin = Ui.dp(this, 14);
         center.addView(hint, hintParams);
 
         layer.addView(center, new FrameLayout.LayoutParams(

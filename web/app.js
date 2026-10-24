@@ -549,6 +549,10 @@
     $('#pane-chats').classList.toggle('hidden', next !== 'chats');
     $('#pane-me').classList.toggle('hidden', next !== 'me');
     $('#list-title').textContent = next === 'chats' ? '聊天' : '我';
+    const title = $('#list-title');
+    title.classList.remove('title-swap');
+    void title.offsetWidth;
+    title.classList.add('title-swap');
     $('#btn-add').classList.toggle('hidden', next === 'me');
     $('#online-count').classList.toggle('hidden', next === 'me');
     $('#search-wrap').classList.toggle('hidden', next === 'me');
@@ -686,6 +690,7 @@
     updateChatStatus();
     $('#chat-messages').textContent = '';
     $('#chat-empty').textContent = '加载中…';
+    $('#chat-empty').classList.add('loading');
     $('#chat-empty').classList.remove('hidden');
     $('#chat-input').value = '';
     updateSendButton();
@@ -698,6 +703,7 @@
       toast(err.message || '无法加载聊天记录');
     }
     state.chat.loading = false;
+    $('#chat-empty').classList.remove('loading');
     $('#chat-empty').textContent = '还没有消息，打个招呼吧';
     renderMessages();
     markChatRead(contact.id);

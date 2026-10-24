@@ -391,7 +391,7 @@ svg {
   padding: 11px;
   border-radius: 10px;
   color: var(--faint);
-  transition: background-color 0.14s ease, color 0.14s ease, transform 0.12s ease;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
 }
 .rail-btn svg { width: 100%; height: 100%; }
 .rail-btn:active { transform: scale(0.94); }
@@ -459,6 +459,13 @@ svg {
   font-weight: 700;
   letter-spacing: -0.02em;
 }
+.list-heading h1.title-swap {
+  animation: titleSwap 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes titleSwap {
+  from { opacity: 0.3; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
 
 .list-tools {
   display: flex;
@@ -524,6 +531,13 @@ svg {
 .pane {
   min-height: 100%;
   padding: 6px 0 12px;
+}
+.pane:not(.hidden) {
+  animation: paneIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes paneIn {
+  from { opacity: 0.2; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* 会话行 */
@@ -850,6 +864,22 @@ svg {
   text-align: center;
   font-size: 12.5px;
   color: var(--faint);
+}
+
+.chat-empty.loading::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .chat-messages {
@@ -1376,17 +1406,14 @@ svg {
     font-size: 10.5px;
     transition: color 0.14s ease;
   }
-  .tab-btn svg { width: 21px; height: 21px; }
+  .tab-btn svg {
+    width: 21px;
+    height: 21px;
+    transition: transform 0.18s ease, color 0.18s ease;
+  }
   .tab-btn.active { color: var(--accent); }
+  .tab-btn.active svg { transform: translateY(-1px) scale(1.08); }
   .tab-btn:active { background: var(--panel-2); }
-
-  .pane:not(.hidden) {
-    animation: paneIn 0.16s ease both;
-  }
-  @keyframes paneIn {
-    from { opacity: 0.35; transform: translateX(5px); }
-    to { opacity: 1; transform: none; }
-  }
 
   .sheet-wrap { padding: 14px; align-items: end; }
   .sheet {
