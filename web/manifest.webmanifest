@@ -1,9 +1,9 @@
 {
-  "name": "VoiceCall 语音通话",
+  "name": "VoiceCall 语音聊天",
   "short_name": "VoiceCall",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#05070d",
-  "theme_color": "#05070d"
+  "background_color": "#0e0f11",
+  "theme_color": "#0e0f11"
 }

@@ -1,13 +1,16 @@
 {
   "httpPort": 3000,
   "httpsPort": 3443,
-  "publicUrl": "https://zen.owo.lat",
+  "publicUrl": "https://chatandcall.owo.lat",
   "sessionDays": 30,
   "callRingTimeoutSec": 45,
   "tls": {
     "enabled": true,
     "cert": "",
-    "key": ""
+    "key": "",
+    "hosts": [
+      "zen.owo.lat"
+    ]
   },
   "stun": [
     "stun:stun.miwifi.com:3478",

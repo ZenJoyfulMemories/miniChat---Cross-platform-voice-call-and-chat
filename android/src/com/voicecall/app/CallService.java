@@ -504,7 +504,7 @@ public class CallService extends Service {
             PendingIntent pending = PendingIntent.getActivity(this, 31, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             Notification.Builder builder = new Notification.Builder(this, CH_CHAT)
-                .setSmallIcon(R.drawable.ic_notify)
+                .setSmallIcon(R.drawable.ic_chat)
                 .setContentTitle(name)
                 .setContentText(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))

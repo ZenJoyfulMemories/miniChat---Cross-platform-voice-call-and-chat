@@ -87,8 +87,8 @@ public class IncomingCallActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Ui.BG);
 
-        addAurora(root, new int[] {0x663B82F6, 0x3322D3EE}, 460, Gravity.TOP | Gravity.LEFT, -140, -180);
-        addAurora(root, new int[] {0x338C5CFF, 0x002FD8E8}, 420, Gravity.BOTTOM | Gravity.RIGHT, 0, 120);
+        addAurora(root, new int[] {0x66B9A4FF, 0x33A78BFA}, 460, Gravity.TOP | Gravity.LEFT, -140, -180);
+        addAurora(root, new int[] {0x33C4B5FD, 0x008B5CF6}, 420, Gravity.BOTTOM | Gravity.RIGHT, 0, 120);
 
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -145,7 +145,7 @@ public class IncomingCallActivity extends Activity {
         }));
         LinearLayout.LayoutParams gap = new LinearLayout.LayoutParams(Ui.dp(this, 64), Ui.dp(this, 1));
         actions.addView(new View(this), gap);
-        actions.addView(actionButton("接听", R.drawable.ic_call, new int[] {0xFF5BE38C, 0xFF1E9E4A}, new View.OnClickListener() {
+        actions.addView(actionButton("接听", R.drawable.ic_call, new int[] {0xFFC4B5FD, 0xFF8B5CF6}, new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 answer();

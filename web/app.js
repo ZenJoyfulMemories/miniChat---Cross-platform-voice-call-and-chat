@@ -8,9 +8,9 @@
   const STORAGE_KEY = 'voicecall.session.v1';
   const DEVICE_KEY = 'voicecall.device.v1';
   const CHAT_READ_KEY = 'voicecall.chatread.v1';
-  const BASE_TITLE = 'VoiceCall · 语音通话';
+  const BASE_TITLE = 'VoiceCall · 语音聊天';
   const FAVICON_ALERT = `data:image/svg+xml,${encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#07c160"/><path d="M8 22l4-10 4 7 3-4 5 7z" fill="#04140a"/><circle cx="24" cy="8" r="6" fill="#fa5151" stroke="#0e0f11" stroke-width="2"/></svg>'
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#b9a4ff"/><path d="M8 22l4-10 4 7 3-4 5 7z" fill="#1a1033"/><circle cx="24" cy="8" r="6" fill="#fa5151" stroke="#0e0f11" stroke-width="2"/></svg>'
   )}`;
   const bridge = window.AndroidBridge || null;
 
@@ -505,7 +505,7 @@
 
       const preview = conv
         ? `${conv.fromMe ? '我：' : ''}${conv.lastText || ''}`
-        : (contact.online ? '在线 · 点击开始聊天' : '离线');
+        : '点击开始聊天';
       const sub = el('span', 'contact-sub', preview);
       sub.title = preview;
       meta.appendChild(sub);
@@ -666,7 +666,7 @@
 
   function updateChatStatus() {
     if (!state.chat.peer) return;
-    $('#chat-status').textContent = state.chat.peer.online ? '在线' : '离线';
+    $('#chat-status').textContent = state.chat.peer.online ? '在线' : '';
   }
 
   async function openChat(contact) {

@@ -12,7 +12,7 @@ import android.widget.TextView;
 
 /** 轻量 UI 工具：统一液态玻璃风格的圆角、渐变与文字。 */
 final class Ui {
-    static final int BG = Color.rgb(5, 7, 13);
+    static final int BG = Color.rgb(14, 15, 17);
     static final int TEXT = Color.rgb(244, 247, 255);
     static final int MUTED = 0xA6E7EEFF;
     static final int FAINT = 0x66E7EEFF;

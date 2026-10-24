@@ -11,9 +11,11 @@
   --text: #e9eaec;
   --muted: #9a9da4;
   --faint: #6c6f76;
-  --accent: #07c160;
-  --accent-strong: #06ad56;
-  --accent-soft: rgba(7, 193, 96, 0.13);
+  --accent: #b9a4ff;
+  --accent-strong: #a78bfa;
+  --accent-ink: #1a1033;
+  --accent-soft: rgba(185, 164, 255, 0.14);
+  --online: #30d158;
   --danger: #fa5151;
   --radius: 12px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
@@ -120,7 +122,6 @@ svg {
   display: grid;
   place-items: center;
   border-radius: 10px;
-  overflow: hidden;
   color: #fff;
   font-size: 16px;
   font-weight: 600;
@@ -145,12 +146,12 @@ svg {
 .avatar.g5 { background: linear-gradient(145deg, #5a72d8, #4b62c0); }
 .avatar .dot {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
+  right: -4px;
+  bottom: -4px;
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--online);
   border: 2px solid var(--panel);
 }
 .avatar .msg-dot {
@@ -180,7 +181,7 @@ svg {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(560px 380px at 72% 16%, rgba(7, 193, 96, 0.1), transparent 62%),
+    radial-gradient(560px 380px at 72% 16%, rgba(185, 164, 255, 0.1), transparent 62%),
     var(--bg-deep);
 }
 
@@ -201,7 +202,7 @@ svg {
   justify-content: center;
   gap: 10px;
   background:
-    linear-gradient(155deg, rgba(7, 193, 96, 0.1), transparent 58%),
+    linear-gradient(155deg, rgba(185, 164, 255, 0.1), transparent 58%),
     var(--panel);
 }
 
@@ -212,7 +213,7 @@ svg {
   place-items: center;
   border-radius: 14px;
   background: var(--accent);
-  color: #04140a;
+  color: var(--accent-ink);
   font-size: 24px;
   font-weight: 800;
   margin-bottom: 12px;
@@ -286,7 +287,7 @@ svg {
   color: var(--muted);
   transition: color 0.18s ease;
 }
-.segmented button.active { color: #04140a; }
+.segmented button.active { color: var(--accent-ink); }
 
 .field {
   display: block;
@@ -331,7 +332,7 @@ svg {
   height: 44px;
   border-radius: 9px;
   background: var(--accent);
-  color: #04140a;
+  color: var(--accent-ink);
   font-size: 15px;
   font-weight: 600;
   transition: background-color 0.15s ease, transform 0.12s ease;
@@ -375,7 +376,7 @@ svg {
   place-items: center;
   border-radius: 9px;
   background: var(--accent);
-  color: #04140a;
+  color: var(--accent-ink);
   font-size: 17px;
   font-weight: 800;
   margin-bottom: 14px;
@@ -469,8 +470,8 @@ svg {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.13);
+  background: var(--online);
+  box-shadow: 0 0 0 3px rgba(48, 209, 88, 0.13);
 }
 .conn-dot.off { background: var(--faint); box-shadow: none; }
 
@@ -629,7 +630,7 @@ svg {
 .contact-call svg { width: 16px; height: 16px; }
 .contact-call:active { transform: scale(0.92); }
 @media (hover: hover) {
-  .contact-call:hover { background: rgba(7, 193, 96, 0.22); }
+  .contact-call:hover { background: rgba(185, 164, 255, 0.22); }
 }
 
 .chat-unread-dot {
@@ -722,7 +723,7 @@ svg {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--online);
 }
 .me-net.off i { background: var(--faint); }
 
@@ -754,7 +755,7 @@ svg {
   padding: 30px;
   text-align: center;
   background:
-    radial-gradient(600px 380px at 50% 30%, rgba(7, 193, 96, 0.06), transparent 70%);
+    radial-gradient(600px 380px at 50% 30%, rgba(185, 164, 255, 0.06), transparent 70%);
 }
 .welcome-mark {
   width: 66px;
@@ -764,7 +765,7 @@ svg {
   padding: 18px;
   border-radius: 18px;
   background: var(--accent);
-  color: #04140a;
+  color: var(--accent-ink);
   margin-bottom: 10px;
 }
 .welcome h2 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
@@ -778,14 +779,14 @@ svg {
   font-size: 11px;
   color: var(--muted);
 }
-.welcome-chips span:first-child { color: var(--accent); border-color: rgba(7, 193, 96, 0.3); }
+.welcome-chips span:first-child { color: var(--accent); border-color: rgba(185, 164, 255, 0.3); }
 .welcome-chips i {
   display: inline-block;
   width: 5px;
   height: 5px;
   margin-right: 5px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--online);
   vertical-align: 1px;
 }
 
@@ -891,7 +892,7 @@ svg {
 }
 .msg.mine .bubble {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   border-top-right-radius: 4px;
 }
 .msg time {
@@ -924,7 +925,7 @@ svg {
   transition: border-color 0.15s ease;
 }
 .chat-compose input::placeholder { color: #55585f; }
-.chat-compose input:focus { border-color: rgba(7, 193, 96, 0.55); }
+.chat-compose input:focus { border-color: rgba(185, 164, 255, 0.55); }
 .chat-send {
   width: 40px;
   height: 40px;
@@ -934,7 +935,7 @@ svg {
   padding: 10px;
   border-radius: 9px;
   background: var(--accent);
-  color: #04140a;
+  color: var(--accent-ink);
   transition: background-color 0.15s ease, transform 0.12s ease, opacity 0.15s ease;
 }
 .chat-send svg { width: 100%; height: 100%; }
@@ -962,12 +963,12 @@ svg {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 22%, rgba(7, 193, 96, 0.12), transparent 58%),
+    radial-gradient(circle at 50% 22%, rgba(185, 164, 255, 0.12), transparent 58%),
     #0b0c0e;
 }
 .incoming .overlay-bg {
   background:
-    radial-gradient(circle at 50% 22%, rgba(7, 193, 96, 0.18), transparent 58%),
+    radial-gradient(circle at 50% 22%, rgba(185, 164, 255, 0.18), transparent 58%),
     #0a0b0c;
 }
 
@@ -991,7 +992,7 @@ svg {
   letter-spacing: 0.08em;
   color: var(--accent);
   background: var(--accent-soft);
-  border: 1px solid rgba(7, 193, 96, 0.25);
+  border: 1px solid rgba(185, 164, 255, 0.25);
   margin-bottom: 28px;
 }
 .incoming-label i {
@@ -1043,7 +1044,7 @@ svg {
   position: absolute;
   inset: -8px;
   border-radius: 26px;
-  border: 1px solid rgba(7, 193, 96, 0.35);
+  border: 1px solid rgba(185, 164, 255, 0.35);
   animation: ripple 2.2s ease-out infinite;
 }
 .big-avatar.pulse::after { animation-delay: 1.1s; }
@@ -1089,14 +1090,14 @@ svg {
 .circle-btn svg { width: 100%; height: 100%; }
 .circle-btn:active { transform: scale(0.94); }
 .circle-btn.danger { background: var(--danger); }
-.circle-btn.success { background: var(--accent); color: #04140a; }
+.circle-btn.success { background: var(--accent); color: var(--accent-ink); }
 .circle-btn.success.breathe { position: relative; }
 .circle-btn.success.breathe::after {
   content: "";
   position: absolute;
   inset: -6px;
   border-radius: 50%;
-  border: 2px solid rgba(7, 193, 96, 0.36);
+  border: 2px solid rgba(185, 164, 255, 0.36);
   animation: answerRing 2s ease-out infinite;
   pointer-events: none;
 }
@@ -1144,7 +1145,7 @@ svg {
   width: 3px;
   height: 30px;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--accent), rgba(7, 193, 96, 0.22));
+  background: linear-gradient(180deg, var(--accent), rgba(185, 164, 255, 0.22));
   transform: scaleY(0.15);
   transform-origin: center;
 }
@@ -1208,7 +1209,7 @@ svg {
   padding: 6px 14px;
   border-radius: 999px;
   background: var(--accent);
-  color: #04140a;
+  color: var(--accent-ink);
   font-size: 12.5px;
   font-weight: 600;
 }
