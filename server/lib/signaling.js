@@ -101,7 +101,7 @@ class Signaling {
     const user = this.store.get(uid);
     this.send(conn, {
       type: 'ready',
-      user: { id: user.id, name: user.name },
+      user: { id: user.id, name: user.name, avatar: user.avatar || '' },
       contacts: this.contactsWithPresence(user),
       deviceId: conn.deviceId,
       serverTime: Date.now()
@@ -256,6 +256,15 @@ class Signaling {
     return null;
   }
 
+  broadcastProfile(user) {
+    const payload = {
+      type: 'profile',
+      user: { id: user.id, name: user.name, avatar: user.avatar || '' }
+    };
+    this.sendUser(user.id, payload);
+    for (const cid of user.contacts) this.sendUser(cid, payload);
+  }
+
   // ---------------- 聊天 ----------------
 
   chatSend(conn, msg) {
@@ -275,7 +284,7 @@ class Signaling {
 
     const message = this.store.addMessage(conn.uid, toId, text);
     this.sendUser(conn.uid, { type: 'chat:sent', message, clientId });
-    this.sendUser(toId, { type: 'chat:message', message, from: { id: user.id, name: user.name } });
+    this.sendUser(toId, { type: 'chat:message', message, from: { id: user.id, name: user.name, avatar: user.avatar || '' } });
     this.log.info?.(`[chat] ${conn.uid} -> ${toId} ${message.id}`);
   }
 
@@ -325,7 +334,7 @@ class Signaling {
         type: 'call:incoming',
         callId,
         mode: 'audio',
-        from: { id: callerUser.id, name: callerUser.name },
+        from: { id: callerUser.id, name: callerUser.name, avatar: callerUser.avatar || '' },
         at: call.createdAt
       });
     }

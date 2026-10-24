@@ -78,8 +78,7 @@
     <section id="home" class="shell hidden">
       <nav class="rail" aria-label="主导航">
         <div class="rail-logo">V</div>
-        <button class="rail-btn active" data-tab="chats" aria-label="聊天"><svg><use href="#i-chat"/></svg></button>
-        <button class="rail-btn" data-tab="contacts" aria-label="通讯录"><svg><use href="#i-users"/></svg></button>
+        <button class="rail-btn" data-tab="chats" aria-label="聊天"><svg><use href="#i-chat"/></svg></button>
         <button class="rail-btn" data-tab="me" aria-label="我"><svg><use href="#i-user"/></svg></button>
         <div class="rail-gap"></div>
         <button class="rail-btn" id="btn-settings" aria-label="设置"><svg><use href="#i-gear"/></svg></button>
@@ -106,26 +105,20 @@
           <section class="pane" id="pane-chats">
             <ul id="chat-list" class="chat-list"></ul>
             <div class="empty" id="empty-chats">
-              <div class="empty-icon"><svg><use href="#i-chat"/></svg></div>
-              <p>还没有聊天</p>
-              <span>去通讯录选择联系人开始对话</span>
-            </div>
-          </section>
-
-          <section class="pane hidden" id="pane-contacts">
-            <ul id="contact-list" class="contacts"></ul>
-            <div class="empty" id="empty-contacts">
               <div class="empty-icon"><svg><use href="#i-user-plus"/></svg></div>
               <p>还没有联系人</p>
-              <span>点击右上角 + 添加对方账号</span>
+              <span>点击右上角 + 添加对方账号，即可聊天或通话</span>
             </div>
           </section>
 
           <section class="pane hidden" id="pane-me">
             <div class="me-card">
-              <div class="avatar me-big" id="me-avatar">V</div>
+              <button class="me-avatar-btn" id="me-avatar-btn" aria-label="更换头像">
+                <div class="avatar me-big" id="me-avatar">V</div>
+              </button>
               <strong id="me-name">VoiceCall</strong>
               <span id="me-id">@</span>
+              <span class="me-avatar-hint">点击头像更换</span>
             </div>
             <ul class="menu-list">
               <li class="menu-item" id="btn-settings-me"><span>设置与权限</span><svg><use href="#i-arrow"/></svg></li>
@@ -134,6 +127,7 @@
             <p class="me-version">VoiceCall · 局域网语音与聊天</p>
           </section>
         </div>
+        <input type="file" id="avatar-input" accept="image/*" hidden>
       </section>
 
       <section class="content-pane">
@@ -176,7 +170,6 @@
   <!-- 移动端底部导航 -->
   <nav class="tab-bar hidden" id="tab-bar" aria-label="底部导航">
     <button class="tab-btn active" data-tab="chats"><svg><use href="#i-chat"/></svg><span>聊天</span></button>
-    <button class="tab-btn" data-tab="contacts"><svg><use href="#i-users"/></svg><span>通讯录</span></button>
     <button class="tab-btn" data-tab="me"><svg><use href="#i-user"/></svg><span>我</span></button>
   </nav>
 
@@ -209,11 +202,11 @@
       <div class="call-status" id="call-status">正在呼叫…</div>
       <div class="call-avatar-wrap">
         <div class="big-avatar" id="call-avatar">?</div>
-        <div class="wave-bars" id="wave-bars" aria-hidden="true"></div>
       </div>
       <h2 id="call-name">联系人</h2>
       <p class="call-timer" id="call-timer">00:00</p>
       <p class="call-hint" id="call-hint">等待对方接听</p>
+      <div class="wave-bars" id="wave-bars" aria-hidden="true"></div>
       <div class="call-actions">
         <div class="action">
           <button class="circle-btn" id="btn-mute" aria-label="静音">

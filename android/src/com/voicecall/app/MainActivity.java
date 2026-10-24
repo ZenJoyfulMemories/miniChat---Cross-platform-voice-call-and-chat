@@ -38,11 +38,13 @@ import java.util.List;
 /** 承载网页端界面的容器，原生层负责信令与权限。 */
 public class MainActivity extends Activity {
     private static final int REQ_PERMISSIONS = 3001;
+    private static final int REQ_FILE_CHOOSER = 4002;
 
     private WebView web;
     private FrameLayout container;
     private View splash;
     private boolean keepScreenOn;
+    private ValueCallback<Uri[]> fileChooserCallback;
 
     private final Bridge.Page page = new Bridge.Page() {
         @Override
@@ -188,6 +190,19 @@ public class MainActivity extends Activity {
                 if (audio) request.grant(new String[] {PermissionRequest.RESOURCE_AUDIO_CAPTURE});
                 else request.deny();
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (fileChooserCallback != null) fileChooserCallback.onReceiveValue(null);
+                fileChooserCallback = callback;
+                try {
+                    startActivityForResult(params.createIntent(), REQ_FILE_CHOOSER);
+                    return true;
+                } catch (Exception err) {
+                    fileChooserCallback = null;
+                    return false;
+                }
+            }
         });
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -238,6 +253,19 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(code, permissions, results);
         // 权限授予后页面会在需要时自行发起麦克风请求，无需刷新
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQ_FILE_CHOOSER) {
+            if (fileChooserCallback != null) {
+                Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+                fileChooserCallback.onReceiveValue(result);
+                fileChooserCallback = null;
+            }
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void postJs(final String js) {

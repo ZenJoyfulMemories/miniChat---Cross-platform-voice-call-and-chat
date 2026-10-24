@@ -129,6 +129,14 @@ async function main() {
   log('一方添加后双方互为联系人');
   await api('/api/contacts', { method: 'POST', body: { id: 'alice' }, token: bob.data.token });
 
+  const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lM1lLQAAAABJRU5ErkJggg==';
+  const avatarRes = await api('/api/profile/avatar', { method: 'POST', body: { avatar }, token: alice.data.token });
+  assert.equal(avatarRes.status, 200);
+  assert.equal(avatarRes.data.user.avatar, avatar);
+  const bobMe = await api('/api/me', { token: bob.data.token });
+  assert.equal(bobMe.data.contacts.find((c) => c.id === 'alice').avatar, avatar);
+  log('头像上传并同步到联系人');
+
   const aliceWs = await makeClient(alice.data.token, 'alice-web');
   const aliceReady = await aliceWs.next('ready');
   assert.equal(aliceReady.user.id, 'alice');

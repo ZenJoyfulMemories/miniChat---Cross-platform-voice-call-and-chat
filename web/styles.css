@@ -120,6 +120,7 @@ svg {
   display: grid;
   place-items: center;
   border-radius: 10px;
+  overflow: hidden;
   color: #fff;
   font-size: 16px;
   font-weight: 600;
@@ -127,6 +128,16 @@ svg {
   background: linear-gradient(145deg, #3d6df0, #6a4cf0);
   user-select: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.avatar.has-photo { background: var(--panel-3); text-shadow: none; }
+.avatar img,
+.big-avatar img,
+.rail-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
 }
 .avatar.g2 { background: linear-gradient(145deg, #e8703c, #c8457d); }
 .avatar.g3 { background: linear-gradient(145deg, #16a97a, #1b8fa4); }
@@ -408,11 +419,13 @@ svg {
   display: grid;
   place-items: center;
   border-radius: 10px;
+  overflow: hidden;
   background: linear-gradient(145deg, #3d6df0, #6a4cf0);
   color: #fff;
   font-size: 15px;
   font-weight: 600;
   user-select: none;
+  cursor: pointer;
 }
 
 /* ---------- 列表栏 ---------- */
@@ -580,6 +593,20 @@ svg {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.contact-meta .row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.contact-meta .row-top strong { flex: 1; min-width: 0; }
+.contact-meta .row-time {
+  display: inline;
+  flex: none;
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--faint);
+}
 .contact-meta span {
   display: block;
   font-size: 12px;
@@ -650,8 +677,16 @@ svg {
   padding: 28px 20px 24px;
   border-bottom: 1px solid var(--line-soft);
 }
+.me-avatar-btn {
+  padding: 0;
+  display: block;
+  line-height: 0;
+  border-radius: 14px;
+}
+.me-avatar-btn:active { transform: scale(0.97); }
 .me-card strong { font-size: 18px; font-weight: 600; margin-top: 8px; }
 .me-card span { font-size: 12px; color: var(--faint); }
+.me-avatar-hint { font-size: 10.5px !important; color: var(--faint); }
 
 .menu-list { padding: 8px 0; }
 .menu-item {
@@ -1017,13 +1052,19 @@ svg {
   to { transform: scale(1.22); opacity: 0; }
 }
 
-.incoming-actions,
-.call-actions {
+.incoming-actions {
   display: flex;
   align-items: flex-start;
   justify-content: center;
   gap: 56px;
   margin-top: 44px;
+}
+.call-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 56px;
+  margin-top: 30px;
 }
 .action {
   display: flex;
@@ -1090,19 +1131,20 @@ svg {
   height: 104px;
 }
 .wave-bars {
-  position: absolute;
-  inset: -18px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
+  width: 172px;
+  height: 34px;
+  margin-top: 16px;
   pointer-events: none;
 }
 .wave-bars i {
   width: 3px;
-  height: 34px;
+  height: 30px;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--accent), rgba(7, 193, 96, 0.25));
+  background: linear-gradient(180deg, var(--accent), rgba(7, 193, 96, 0.22));
   transform: scaleY(0.15);
   transform-origin: center;
 }

@@ -216,6 +216,21 @@ async function handleApi(req, res, url) {
     });
   }
 
+  if (method === 'POST' && p === '/api/profile/avatar') {
+    return withUser(async () => {
+      const user = requireUser(req);
+      const body = await readBody(req, 300 * 1024);
+      const avatar = String(body.avatar || '');
+      if (!/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=\s]+$/.test(avatar) || avatar.length > 260000) {
+        throw new HttpError(400, 'invalid_avatar', '头像格式不支持或图片过大');
+      }
+      store.setAvatar(user.id, avatar);
+      const updated = store.get(user.id);
+      signaling.broadcastProfile(updated);
+      return sendJson(res, 200, { user: store.publicUser(updated) });
+    });
+  }
+
   if (method === 'GET' && p === '/api/contacts') {
     return withUser(() => {
       const user = requireUser(req);

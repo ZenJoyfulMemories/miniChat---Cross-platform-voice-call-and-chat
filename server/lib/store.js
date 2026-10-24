@@ -71,7 +71,7 @@ class Store {
   }
 
   publicUser(user) {
-    return { id: user.id, name: user.name, createdAt: user.createdAt };
+    return { id: user.id, name: user.name, avatar: user.avatar || '', createdAt: user.createdAt };
   }
 
   async register(id, name, password) {
@@ -88,6 +88,7 @@ class Store {
     const user = {
       id: uid,
       name: String(name || uid).trim().slice(0, 24) || uid,
+      avatar: '',
       salt,
       hash,
       contacts: [],
@@ -113,9 +114,17 @@ class Store {
     const out = [];
     for (const cid of user.contacts) {
       const c = this.users.get(cid);
-      if (c) out.push({ id: c.id, name: c.name });
+      if (c) out.push({ id: c.id, name: c.name, avatar: c.avatar || '' });
     }
     return out.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+  }
+
+  setAvatar(uid, avatar) {
+    const user = this.get(uid);
+    if (!user) throw new HttpError(401, 'no_session', '登录状态已失效');
+    user.avatar = avatar;
+    this.save();
+    return this.publicUser(user);
   }
 
   isContact(user, otherId) {
@@ -185,10 +194,13 @@ class Store {
     for (const msg of this.messages) {
       if (msg.from !== uid && msg.to !== uid) continue;
       const peerId = msg.from === uid ? msg.to : msg.from;
+      const peer = this.users.get(peerId);
       const prev = map.get(peerId);
       if (!prev || msg.at > prev.lastAt) {
         map.set(peerId, {
           id: peerId,
+          name: peer ? peer.name : peerId,
+          avatar: peer ? peer.avatar || '' : '',
           lastAt: msg.at,
           lastText: msg.text,
           fromMe: msg.from === uid
@@ -205,7 +217,7 @@ class Store {
     for (const user of this.users.values()) {
       if (user.id === ownerId) continue;
       if (user.id.includes(q) || user.name.toLowerCase().includes(q)) {
-        results.push({ id: user.id, name: user.name });
+        results.push({ id: user.id, name: user.name, avatar: user.avatar || '' });
         if (results.length >= 10) break;
       }
     }

@@ -8,6 +8,10 @@
   const STORAGE_KEY = 'voicecall.session.v1';
   const DEVICE_KEY = 'voicecall.device.v1';
   const CHAT_READ_KEY = 'voicecall.chatread.v1';
+  const BASE_TITLE = 'VoiceCall · 语音通话';
+  const FAVICON_ALERT = `data:image/svg+xml,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#07c160"/><path d="M8 22l4-10 4 7 3-4 5 7z" fill="#04140a"/><circle cx="24" cy="8" r="6" fill="#fa5151" stroke="#0e0f11" stroke-width="2"/></svg>'
+  )}`;
   const bridge = window.AndroidBridge || null;
 
   const state = {
@@ -72,10 +76,30 @@
     return `g${(hash(String(id || '')) % 5) + 1}`;
   }
 
-  function paintAvatar(node, name, id) {
+  function paintAvatar(node, name, id, avatar) {
+    if (!node) return;
     const keepPulse = node.classList.contains('pulse');
-    node.className = `${node.classList.contains('big-avatar') ? 'big-avatar' : 'avatar'} ${gradientClass(id)}${keepPulse ? ' pulse' : ''}`;
-    node.textContent = initial(name);
+    const big = node.classList.contains('big-avatar');
+    const meBig = node.classList.contains('me-big');
+    const photo = Boolean(avatar && /^data:image\//.test(avatar));
+    node.className = `${big ? 'big-avatar' : 'avatar'}${meBig ? ' me-big' : ''} `
+      + `${photo ? 'has-photo' : gradientClass(id)}${keepPulse ? ' pulse' : ''}`;
+    node.textContent = '';
+    if (photo) {
+      const img = document.createElement('img');
+      img.src = avatar;
+      img.alt = '';
+      img.decoding = 'async';
+      node.appendChild(img);
+    } else {
+      node.textContent = initial(name);
+    }
+  }
+
+  function avatarEl(name, id, avatar, className = 'avatar') {
+    const node = el('div', className);
+    paintAvatar(node, name, id, avatar);
+    return node;
   }
 
   function formatDuration(ms) {
@@ -263,6 +287,7 @@
 
   async function submitAuth(event) {
     event.preventDefault();
+    requestNotifyPermission();
     const id = $('#auth-id').value.trim();
     const name = $('#auth-name').value.trim();
     const password = $('#auth-pwd').value;
@@ -336,19 +361,20 @@
   // ---------------- 联系人 ----------------
   function renderProfile() {
     if (!state.user) return;
-    const meAvatar = $('#me-avatar');
-    if (meAvatar) {
-      meAvatar.className = `avatar me-big ${gradientClass(state.user.id)}`;
-      meAvatar.textContent = initial(state.user.name);
-    }
-    const settingsAvatar = $('#settings-avatar');
-    if (settingsAvatar) {
-      settingsAvatar.className = `avatar ${gradientClass(state.user.id)}`;
-      settingsAvatar.textContent = initial(state.user.name);
-    }
+    const avatar = state.user.avatar || '';
+    paintAvatar($('#me-avatar'), state.user.name, state.user.id, avatar);
+    paintAvatar($('#settings-avatar'), state.user.name, state.user.id, avatar);
     const railAvatar = $('#rail-avatar');
     if (railAvatar) {
-      railAvatar.textContent = initial(state.user.name);
+      railAvatar.textContent = '';
+      if (/^data:image\//.test(avatar)) {
+        const img = document.createElement('img');
+        img.src = avatar;
+        img.alt = '';
+        railAvatar.appendChild(img);
+      } else {
+        railAvatar.textContent = initial(state.user.name);
+      }
     }
     $('#me-name').textContent = state.user.name;
     $('#me-id').textContent = `@${state.user.id}`;
@@ -356,42 +382,134 @@
     $('#settings-id').textContent = `@${state.user.id}`;
     $('#settings-server').textContent = location.origin;
     $('#settings-device').textContent = bridge ? '安卓客户端' : (/Mobi|Android/i.test(navigator.userAgent) ? '移动网页' : '网页端');
-    $('#btn-server-config').hidden = !bridge;
+    const settingsServer = $('#btn-server-config');
+    if (settingsServer) settingsServer.hidden = !bridge;
   }
 
   function contactLabel(contact) {
     return contact.online ? '在线' : (contact.lastSeen ? '离线' : '离线');
   }
 
-  function renderContacts() {
-    const list = $('#contact-list');
-    const keyword = $('#contact-search').value.trim().toLowerCase();
-    const all = [...state.contacts.values()];
-    const filtered = all
-      .filter((c) => !keyword || c.id.includes(keyword) || c.name.toLowerCase().includes(keyword))
-      .sort((a, b) => (Number(b.online) - Number(a.online)) || a.name.localeCompare(b.name, 'zh-CN'));
+  function squareAvatar(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !/^image\//.test(file.type)) {
+        reject(new Error('请选择图片文件'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('无法读取图片'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('图片无法解析'));
+        img.onload = () => {
+          const size = 192;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#1b1c1f';
+          ctx.fillRect(0, 0, size, size);
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width - side) / 2;
+          const sy = (img.height - side) / 2;
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.86));
+        };
+        img.src = String(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
-    $('#empty-contacts').classList.toggle('hidden', all.length !== 0);
-    list.classList.toggle('hidden', all.length === 0);
-    $('#online-count').textContent = `${all.filter((c) => c.online).length} 在线`;
+  async function uploadAvatar(file) {
+    try {
+      const avatar = await squareAvatar(file);
+      const data = await api('/api/profile/avatar', { method: 'POST', body: { avatar } });
+      state.user = { ...state.user, ...(data.user || {}), avatar };
+      saveSession();
+      renderProfile();
+      toast('头像已更新');
+    } catch (err) {
+      toast(err.message || '头像上传失败');
+    }
+  }
+
+  let listRenderQueued = false;
+  function scheduleListRender() {
+    if (listRenderQueued) return;
+    listRenderQueued = true;
+    requestAnimationFrame(() => {
+      listRenderQueued = false;
+      renderListNow();
+    });
+  }
+
+  // 聊天与通讯录合并为同一个列表
+  function renderContacts() {
+    scheduleListRender();
+  }
+
+  function renderChats() {
+    scheduleListRender();
+  }
+
+  function renderListNow() {
+    const list = $('#chat-list');
+    if (!list) return;
+    const keyword = $('#contact-search').value.trim().toLowerCase();
+    const rows = [];
+    const seen = new Set();
+
+    for (const contact of state.contacts.values()) {
+      seen.add(contact.id);
+      rows.push({ contact, conv: state.conversations.get(contact.id) || null });
+    }
+    for (const conv of state.conversations.values()) {
+      if (seen.has(conv.id)) continue;
+      rows.push({
+        contact: {
+          id: conv.id,
+          name: conv.name || conv.id,
+          avatar: conv.avatar || '',
+          online: Boolean(conv.online)
+        },
+        conv
+      });
+    }
+
+    const filtered = rows.filter(({ contact }) => !keyword
+      || contact.id.includes(keyword)
+      || String(contact.name || '').toLowerCase().includes(keyword));
+
+    filtered.sort((a, b) => {
+      const at = a.conv ? a.conv.lastAt : 0;
+      const bt = b.conv ? b.conv.lastAt : 0;
+      if (at !== bt) return bt - at;
+      return (Number(b.contact.online) - Number(a.contact.online))
+        || String(a.contact.name).localeCompare(String(b.contact.name), 'zh-CN');
+    });
 
     list.textContent = '';
-    for (const contact of filtered) {
-      const li = el('li', `contact${contact.online ? '' : ' offline'}`);
-      const av = el('div', `avatar ${gradientClass(contact.id)}`, initial(contact.name));
-      if (contact.online) av.appendChild(el('span', 'dot'));
-      const conv = state.conversations.get(contact.id);
+    for (const { contact, conv } of filtered) {
       const unread = isChatUnread(contact.id);
+      const li = el('li', `contact${contact.online ? '' : ' offline'}${unread ? ' unread' : ''}`);
+      const av = avatarEl(contact.name, contact.id, contact.avatar);
+      if (contact.online) av.appendChild(el('span', 'dot'));
+      if (unread) av.appendChild(el('span', 'msg-dot'));
+
       const meta = el('div', 'contact-meta');
-      meta.appendChild(el('strong', '', contact.name));
-      const sub = el('span');
-      if (unread) sub.appendChild(el('i', 'chat-unread-dot'));
+      const top = el('div', 'row-top');
+      top.appendChild(el('strong', '', contact.name));
+      if (conv) top.appendChild(el('span', 'row-time', chatListTime(conv.lastAt)));
+      meta.appendChild(top);
+
       const preview = conv
-        ? `${conv.fromMe ? '我：' : ''}${conv.lastText}`
-        : `@${contact.id} · ${contactLabel(contact)}`;
-      sub.appendChild(document.createTextNode(preview));
+        ? `${conv.fromMe ? '我：' : ''}${conv.lastText || ''}`
+        : (contact.online ? '在线 · 点击开始聊天' : '离线');
+      const sub = el('span', 'contact-sub', preview);
       sub.title = preview;
       meta.appendChild(sub);
+
       const call = el('button', 'contact-call');
       call.type = 'button';
       call.setAttribute('aria-label', `呼叫 ${contact.name}`);
@@ -400,10 +518,15 @@
         event.stopPropagation();
         startCall(contact);
       });
+
       li.append(av, meta, call);
       li.addEventListener('click', () => openChat(contact));
       list.appendChild(li);
     }
+
+    const online = [...state.contacts.values()].filter((c) => c.online).length;
+    $('#online-count').textContent = `${online} 在线`;
+    $('#empty-chats').classList.toggle('hidden', filtered.length > 0);
   }
 
   function chatListTime(ts) {
@@ -416,64 +539,22 @@
     return `${date.getMonth() + 1}/${date.getDate()}`;
   }
 
-  function renderChats() {
-    const list = $('#chat-list');
-    if (!list) return;
-    const keyword = $('#contact-search').value.trim().toLowerCase();
-    const rows = [];
-    for (const conv of state.conversations.values()) {
-      const contact = state.contacts.get(conv.id) || {
-        id: conv.id,
-        name: conv.name || conv.id,
-        online: Boolean(conv.online)
-      };
-      if (keyword && !contact.name.toLowerCase().includes(keyword) && !contact.id.includes(keyword)) continue;
-      rows.push({ conv, contact });
-    }
-    rows.sort((a, b) => b.conv.lastAt - a.conv.lastAt);
-
-    list.textContent = '';
-    for (const { conv, contact } of rows) {
-      const unread = isChatUnread(contact.id);
-      const li = el('li', `chat-row${unread ? ' unread' : ''}`);
-      const av = el('div', `avatar ${gradientClass(contact.id)}`, initial(contact.name));
-      if (unread) av.appendChild(el('span', 'msg-dot'));
-
-      const main = el('div', 'row-main');
-      const top = el('div', 'row-top');
-      top.appendChild(el('span', 'row-name', contact.name));
-      top.appendChild(el('span', 'row-time', chatListTime(conv.lastAt)));
-      main.appendChild(top);
-      const preview = `${conv.fromMe ? '我：' : ''}${conv.lastText || ''}`;
-      const line = el('span', 'row-preview', preview);
-      line.title = preview;
-      main.appendChild(line);
-
-      li.append(av, main);
-      li.addEventListener('click', () => openChat(contact));
-      list.appendChild(li);
-    }
-    $('#empty-chats').classList.toggle('hidden', rows.length > 0);
-  }
-
   function switchTab(tab) {
-    const next = ['chats', 'contacts', 'me'].includes(tab) ? tab : 'chats';
+    const next = tab === 'me' ? 'me' : 'chats';
     state.tab = next;
     $$('[data-tab]').forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === next));
 
     $('#pane-chats').classList.toggle('hidden', next !== 'chats');
-    $('#pane-contacts').classList.toggle('hidden', next !== 'contacts');
     $('#pane-me').classList.toggle('hidden', next !== 'me');
-    $('#list-title').textContent = next === 'chats' ? '聊天' : next === 'contacts' ? '通讯录' : '我';
+    $('#list-title').textContent = next === 'chats' ? '聊天' : '我';
     $('#btn-add').classList.toggle('hidden', next === 'me');
-    $('#online-count').classList.toggle('hidden', next !== 'contacts');
+    $('#online-count').classList.toggle('hidden', next === 'me');
     $('#search-wrap').classList.toggle('hidden', next === 'me');
 
     const input = $('#contact-search');
     input.value = '';
-    input.placeholder = next === 'chats' ? '搜索聊天' : '搜索联系人';
-    if (next === 'chats') renderChats();
-    if (next === 'contacts') renderContacts();
+    input.placeholder = '搜索联系人或聊天';
+    if (next === 'chats') scheduleListRender();
   }
 
   function upsertContact(contact) {
@@ -599,7 +680,7 @@
     state.chat.messages = [];
     state.chat.loading = true;
     $('#chat-name').textContent = contact.name;
-    paintAvatar($('#chat-avatar'), contact.name, contact.id);
+    paintAvatar($('#chat-avatar'), contact.name, contact.id, contact.avatar);
     updateChatStatus();
     $('#chat-messages').textContent = '';
     $('#chat-empty').textContent = '加载中…';
@@ -618,6 +699,7 @@
     $('#chat-empty').textContent = '还没有消息，打个招呼吧';
     renderMessages();
     markChatRead(contact.id);
+    clearChatAlert();
     renderChats();
     renderContacts();
     scrollChatBottom();
@@ -721,7 +803,7 @@
     }
     for (const user of users) {
       const li = el('li', 'add-result');
-      const av = el('div', `avatar ${gradientClass(user.id)}`, initial(user.name));
+      const av = avatarEl(user.name, user.id, user.avatar);
       const info = el('div');
       info.appendChild(el('strong', '', user.name));
       info.appendChild(el('span', '', `@${user.id}`));
@@ -796,15 +878,16 @@
     audioContext();
     if (kind === 'incoming') {
       const ring = () => {
-        tone(880, 0, 0.22, 0.08, 'sine');
-        tone(1174.66, 0.24, 0.26, 0.07, 'sine');
-        tone(880, 0.7, 0.22, 0.06, 'sine');
+        tone(784, 0, 0.32, 0.17, 'triangle');
+        tone(1046.5, 0.2, 0.34, 0.15, 'sine');
+        tone(784, 0.62, 0.3, 0.14, 'triangle');
+        tone(659.25, 0.96, 0.42, 0.12, 'sine');
       };
       ring();
-      state.soundTimer = setInterval(ring, 2400);
+      state.soundTimer = setInterval(ring, 2200);
       if (navigator.vibrate) {
-        navigator.vibrate([500, 300, 500, 900]);
-        state.vibrateTimer = setInterval(() => navigator.vibrate([500, 300, 500, 900]), 2400);
+        navigator.vibrate([650, 250, 650, 850]);
+        state.vibrateTimer = setInterval(() => navigator.vibrate([650, 250, 650, 850]), 2600);
       }
     } else if (kind === 'ringback') {
       const ring = () => {
@@ -828,6 +911,14 @@
     state.soundTimer = null;
     state.vibrateTimer = null;
     if (navigator.vibrate) navigator.vibrate(0);
+  }
+
+  /** 新消息提示音：短促双音，不与来电铃声混淆。 */
+  function playChatSound() {
+    if (state.call) return;
+    audioContext();
+    tone(1046.5, 0, 0.12, 0.11, 'sine');
+    tone(1568, 0.1, 0.18, 0.085, 'sine');
   }
 
   // ---------------- 音量可视化 ----------------
@@ -905,7 +996,7 @@
     const overlay = $('#call');
     overlay.classList.remove('hidden');
     $('#incoming').classList.add('hidden');
-    paintAvatar($('#call-avatar'), peer.name, peer.id);
+    paintAvatar($('#call-avatar'), peer.name, peer.id, peer.avatar);
     $('#call-avatar').classList.remove('pulse');
     $('#call-name').textContent = peer.name;
     setCallPhase(phase);
@@ -919,7 +1010,7 @@
   function showIncoming(peer) {
     const overlay = $('#incoming');
     overlay.classList.remove('hidden');
-    paintAvatar($('#incoming-avatar'), peer.name, peer.id);
+    paintAvatar($('#incoming-avatar'), peer.name, peer.id, peer.avatar);
     $('#incoming-avatar').classList.add('pulse');
     $('#incoming-name').textContent = peer.name;
     $('#incoming-id').textContent = `@${peer.id}`;
@@ -947,7 +1038,50 @@
   function stopTitleFlash() {
     clearInterval(state.titleTimer);
     state.titleTimer = null;
-    document.title = 'VoiceCall · 语音通话';
+    document.title = BASE_TITLE;
+  }
+
+  function setFavicon(alert) {
+    const link = document.querySelector('link[rel="icon"]');
+    if (!link) return;
+    link.href = alert ? FAVICON_ALERT : '/favicon.svg';
+  }
+
+  function clearChatAlert() {
+    setFavicon(false);
+    if (!state.call) stopTitleFlash();
+  }
+
+  function requestNotifyPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
+    try { Notification.requestPermission(); } catch { /* 忽略 */ }
+  }
+
+  /** 新消息：提示音 + 标签页标题/图标闪烁 + 系统通知（浏览器允许时）。 */
+  function notifyChat(contact, text) {
+    if (!contact) return;
+    if (!(bridge && document.hidden)) playChatSound();
+    if (navigator.vibrate && !bridge) navigator.vibrate(30);
+    const openWithSender = state.chat.peer && state.chat.peer.id === contact.id && !document.hidden;
+    if (!openWithSender && !state.call) {
+      startTitleFlash(`新消息 · ${contact.name || contact.id}`);
+      setFavicon(true);
+    }
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        const note = new Notification(contact.name || '新消息', {
+          body: text || '',
+          tag: 'voicecall-chat',
+          icon: '/favicon.svg',
+          silent: true
+        });
+        note.onclick = () => {
+          window.focus();
+          note.close();
+        };
+      } catch { /* 忽略 */ }
+    }
   }
 
   function startCallTimer() {
@@ -1206,6 +1340,11 @@
     switch (msg.type) {
       case 'ready': {
         setNet(true, '已连接');
+        if (msg.user && state.user) {
+          state.user = { ...state.user, ...msg.user };
+          renderProfile();
+          saveSession();
+        }
         if (Array.isArray(msg.contacts)) {
           state.contacts = new Map(msg.contacts.map((c) => [c.id, c]));
           renderContacts();
@@ -1218,6 +1357,23 @@
           state.contacts = new Map(msg.contacts.map((c) => [c.id, c]));
           renderContacts();
           saveSession();
+        }
+        break;
+      }
+      case 'profile': {
+        const user = msg.user;
+        if (!user || !user.id) break;
+        if (state.user && user.id === state.user.id) {
+          state.user = { ...state.user, ...user };
+          saveSession();
+          renderProfile();
+        }
+        const existing = state.contacts.get(user.id);
+        if (existing) upsertContact({ ...existing, ...user });
+        if (state.chat.peer && state.chat.peer.id === user.id) {
+          state.chat.peer = { ...state.chat.peer, ...user };
+          paintAvatar($('#chat-avatar'), state.chat.peer.name, state.chat.peer.id, state.chat.peer.avatar);
+          $('#chat-name').textContent = state.chat.peer.name;
         }
         break;
       }
@@ -1239,6 +1395,12 @@
         if (!message || !message.id) break;
         updateConversation(message);
         if (state.user && message.from === state.user.id) break;
+        const sender = state.contacts.get(message.from) || {
+          id: message.from,
+          name: (msg.from && msg.from.name) || message.from,
+          avatar: (msg.from && msg.from.avatar) || ''
+        };
+        notifyChat(sender, message.text);
         if (state.chat.peer && state.chat.peer.id === message.from) {
           state.chat.messages.push(message);
           renderMessages();
@@ -1559,6 +1721,12 @@
     $$('[data-tab]').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
     $('#rail-avatar').addEventListener('click', () => switchTab('me'));
     $('#btn-settings-me').addEventListener('click', () => openSheet('sheet-settings'));
+    $('#me-avatar-btn').addEventListener('click', () => $('#avatar-input').click());
+    $('#avatar-input').addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (file) uploadAvatar(file);
+      event.target.value = '';
+    });
     $('#chat-form').addEventListener('submit', (event) => {
       event.preventDefault();
       sendChat();
@@ -1614,12 +1782,15 @@
     $('#btn-add').addEventListener('click', () => openSheet('sheet-add'));
     $('#add-search').addEventListener('input', searchUsers);
     $('#btn-settings').addEventListener('click', () => openSheet('sheet-settings'));
+    const serverConfigBtn = $('#btn-server-config');
+    if (serverConfigBtn) {
+      serverConfigBtn.addEventListener('click', () => {
+        if (bridge) {
+          try { bridge.openServerSettings(); } catch { /* 忽略 */ }
+        }
+      });
+    }
     $('#btn-logout').addEventListener('click', logout);
-    $('#btn-server-config').addEventListener('click', () => {
-      if (bridge) {
-        try { bridge.openServerSettings(); } catch { /* 忽略 */ }
-      }
-    });
     $$('[data-close]').forEach((btn) => {
       btn.addEventListener('click', () => closeSheet(btn.dataset.close));
     });
@@ -1668,8 +1839,12 @@
     });
 
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && state.ws && state.ws.readyState > 1 && state.token) connectWS();
+      if (!document.hidden) {
+        clearChatAlert();
+        if (state.ws && state.ws.readyState > 1 && state.token) connectWS();
+      }
     });
+    window.addEventListener('focus', clearChatAlert);
   }
 
   // ---------------- 启动 ----------------
@@ -1678,6 +1853,12 @@
     bindEvents();
     setAuthMode('login');
     loadChatRead();
+
+    // 浏览器端不需要服务器地址入口，直接移除；安卓端保留用于修改地址
+    if (!bridge) {
+      const serverRow = $('#btn-server-config');
+      if (serverRow) serverRow.remove();
+    }
 
     try {
       state.deviceId = localStorage.getItem(DEVICE_KEY) || '';
