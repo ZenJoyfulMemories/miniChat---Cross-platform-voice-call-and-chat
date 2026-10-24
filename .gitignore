@@ -1,0 +1,10 @@
+node_modules/
+data/
+.tools/
+android/build/
+android/out/
+android/voicecall.keystore
+*.apk
+*.apk.idsig
+*.log
+desktop.ini

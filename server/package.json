@@ -1,0 +1,18 @@
+{
+  "name": "voicecall-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "局域网语音通话平台：账号、联系人、在线状态、WebRTC 信令",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test/signaling.test.js"
+  },
+  "dependencies": {
+    "selfsigned": "^2.4.1",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

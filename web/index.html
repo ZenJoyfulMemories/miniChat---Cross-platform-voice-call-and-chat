@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#05070d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>VoiceCall · 语音通话</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="aurora">
+      <span class="blob b1"></span>
+      <span class="blob b2"></span>
+      <span class="blob b3"></span>
+      <span class="blob b4"></span>
+    </div>
+    <div class="grain"></div>
+    <div class="vignette"></div>
+  </div>
+
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="i-phone-off" viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></symbol>
+    <symbol id="i-mic-off" viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></symbol>
+    <symbol id="i-speaker" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+  </svg>
+
+  <main id="app">
+    <!-- 登录 / 注册 -->
+    <section id="auth" class="auth-view hidden">
+      <div class="auth-card glass">
+        <div class="brand">
+          <div class="brand-orb">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <h1>VoiceCall</h1>
+          <p>校园网 · 高清语音通话</p>
+        </div>
+
+        <div class="segmented" id="segmented">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <button type="button" data-mode="login" class="active">登录</button>
+          <button type="button" data-mode="register">注册</button>
+        </div>
+
+        <form id="auth-form" autocomplete="on" novalidate>
+          <label class="field">
+            <span>账号</span>
+            <input id="auth-id" name="username" type="text" autocapitalize="none" autocomplete="username" spellcheck="false" placeholder="例如 xiaoming">
+          </label>
+          <label class="field hidden" id="name-field">
+            <span>昵称</span>
+            <input id="auth-name" name="nickname" type="text" autocomplete="nickname" placeholder="显示给联系人的名字">
+          </label>
+          <label class="field">
+            <span>密码</span>
+            <input id="auth-pwd" name="password" type="password" autocomplete="current-password" placeholder="至少 6 位">
+          </label>
+          <p class="form-error" id="auth-error" role="alert"></p>
+          <button class="primary" id="auth-submit" type="submit">登录</button>
+        </form>
+        <p class="auth-foot">同一账号可同时在网页端与手机端在线</p>
+      </div>
+      <p class="auth-tip">首次部署请使用 https 地址访问，浏览器才允许使用麦克风</p>
+    </section>
+
+    <!-- 主界面 -->
+    <section id="home" class="app-window glass hidden">
+      <aside class="sidebar">
+        <header class="side-head">
+          <div class="me">
+            <div class="avatar" id="me-avatar">V</div>
+            <div class="me-meta">
+              <strong id="me-name">VoiceCall</strong>
+              <span id="me-id">@</span>
+            </div>
+          </div>
+          <button class="icon-btn" id="btn-settings" aria-label="设置">
+            <svg><use href="#i-gear"/></svg>
+          </button>
+        </header>
+
+        <div class="search">
+          <svg><use href="#i-search"/></svg>
+          <input id="contact-search" type="search" placeholder="搜索联系人" autocomplete="off">
+        </div>
+
+        <div class="list-head">
+          <span>联系人</span>
+          <span class="pill" id="online-count">0 在线</span>
+        </div>
+
+        <ul id="contact-list" class="contacts"></ul>
+        <div class="empty-contacts" id="empty-contacts">
+          <div class="empty-orb"><svg><use href="#i-user-plus"/></svg></div>
+          <p>还没有联系人</p>
+          <span>点击下方“添加联系人”，输入对方的账号</span>
+        </div>
+
+        <footer class="side-foot">
+          <button class="add-btn" id="btn-add">
+            <svg><use href="#i-plus"/></svg>
+            <span>添加联系人</span>
+          </button>
+          <span class="net-status" id="net-status"><i></i><em>已连接</em></span>
+        </footer>
+      </aside>
+
+      <div class="stage">
+        <div class="stage-inner">
+          <div class="stage-orb">
+            <span class="ring r1"></span>
+            <span class="ring r2"></span>
+            <span class="stage-core"><svg><use href="#i-phone"/></svg></span>
+          </div>
+          <h2>选择联系人开始通话</h2>
+          <p>点对点语音传输，延迟低、音质清晰<br>网页与手机端可互相呼叫</p>
+          <div class="stage-chips">
+            <span><i class="dot"></i>实时在线状态</span>
+            <span><svg><use href="#i-mic"/></svg>回声消除</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 来电 -->
+  <div id="incoming" class="overlay incoming hidden" role="dialog" aria-modal="true" aria-label="来电">
+    <div class="overlay-bg"></div>
+    <div class="incoming-body">
+      <div class="incoming-label"><i></i>语音来电</div>
+      <div class="big-avatar pulse" id="incoming-avatar">?</div>
+      <h2 id="incoming-name">未知</h2>
+      <p id="incoming-id">@</p>
+      <p class="incoming-hint">VoiceCall 高清语音</p>
+      <div class="incoming-actions">
+        <div class="action">
+          <button class="circle-btn danger" id="btn-decline" aria-label="拒绝">
+            <svg><use href="#i-phone-off"/></svg>
+          </button>
+          <span>拒绝</span>
+        </div>
+        <div class="action">
+          <button class="circle-btn success breathe" id="btn-answer" aria-label="接听">
+            <svg><use href="#i-phone"/></svg>
+          </button>
+          <span>接听</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通话 -->
+  <div id="call" class="overlay call hidden" role="dialog" aria-modal="true" aria-label="通话">
+    <div class="overlay-bg"></div>
+    <div class="call-body">
+      <div class="call-status" id="call-status">正在呼叫…</div>
+      <div class="call-avatar-wrap">
+        <div class="big-avatar" id="call-avatar">?</div>
+        <div class="wave-bars" id="wave-bars" aria-hidden="true"></div>
+      </div>
+      <h2 id="call-name">联系人</h2>
+      <p class="call-timer" id="call-timer">00:00</p>
+      <p class="call-hint" id="call-hint">等待对方接听</p>
+      <div class="call-actions">
+        <div class="action">
+          <button class="circle-btn" id="btn-mute" aria-label="静音">
+            <svg class="ico-mic"><use href="#i-mic"/></svg>
+            <svg class="ico-mic-off"><use href="#i-mic-off"/></svg>
+          </button>
+          <span>静音</span>
+        </div>
+        <div class="action">
+          <button class="circle-btn" id="btn-speaker" aria-label="扬声器">
+            <svg><use href="#i-speaker"/></svg>
+          </button>
+          <span>扬声器</span>
+        </div>
+        <div class="action">
+          <button class="circle-btn danger" id="btn-hangup" aria-label="挂断">
+            <svg><use href="#i-phone-off"/></svg>
+          </button>
+          <span>挂断</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加联系人 -->
+  <div id="sheet-add" class="sheet-wrap hidden">
+    <div class="sheet-backdrop" data-close="sheet-add"></div>
+    <div class="sheet glass">
+      <div class="sheet-head">
+        <h3>添加联系人</h3>
+        <button class="icon-btn" data-close="sheet-add" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+      </div>
+      <p class="sheet-desc">输入对方的账号（不是昵称），添加后即可互相呼叫</p>
+      <div class="search sheet-search">
+        <svg><use href="#i-search"/></svg>
+        <input id="add-search" type="search" placeholder="搜索账号或昵称" autocomplete="off">
+      </div>
+      <ul class="add-results" id="add-results"></ul>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div id="sheet-settings" class="sheet-wrap hidden">
+    <div class="sheet-backdrop" data-close="sheet-settings"></div>
+    <div class="sheet glass">
+      <div class="sheet-head">
+        <h3>设置</h3>
+        <button class="icon-btn" data-close="sheet-settings" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+      </div>
+      <div class="setting-profile">
+        <div class="avatar" id="settings-avatar">V</div>
+        <div>
+          <strong id="settings-name">—</strong>
+          <span id="settings-id">@—</span>
+        </div>
+      </div>
+      <ul class="setting-list">
+        <li><span>通话状态</span><em id="settings-net">已连接</em></li>
+        <li><span>设备</span><em id="settings-device">网页端</em></li>
+        <li><span>服务器</span><em id="settings-server">—</em></li>
+        <li class="link" id="btn-server-config" hidden><span>服务器地址</span><svg><use href="#i-arrow"/></svg></li>
+        <li class="link" id="btn-logout"><span class="danger-text">退出登录</span><svg><use href="#i-logout"/></svg></li>
+      </ul>
+      <p class="sheet-foot">VoiceCall · 局域网语音通话</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <audio id="remote-audio" autoplay playsinline></audio>
+
+  <script src="/app.js"></script>
+</body>
+</html>

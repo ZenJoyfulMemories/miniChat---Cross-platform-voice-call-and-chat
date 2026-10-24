@@ -1,0 +1,25 @@
+{
+  "httpPort": 3000,
+  "httpsPort": 3443,
+  "publicUrl": "https://zen.owo.lat",
+  "sessionDays": 30,
+  "callRingTimeoutSec": 45,
+  "tls": {
+    "enabled": true,
+    "cert": "",
+    "key": ""
+  },
+  "stun": [
+    "stun:stun.miwifi.com:3478",
+    "stun:stun.l.google.com:19302"
+  ],
+  "turn": {
+    "enabled": false,
+    "urls": [
+      "turn:你的公网IP:3478?transport=udp",
+      "turn:你的公网IP:3478?transport=tcp"
+    ],
+    "secret": "",
+    "ttl": 86400
+  }
+}
