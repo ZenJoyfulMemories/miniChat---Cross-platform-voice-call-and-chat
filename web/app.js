@@ -31,9 +31,10 @@
     callTimer: null,
     answerTimer: null,
     dismissedCalls: new Set(),
-    chat: { peer: null, messages: [], loading: false, typingTimer: null },
+    chat: { peer: null, messages: [], loading: false, typingTimer: null, closeTimer: null },
     conversations: new Map(),
     chatRead: new Map(),
+    tab: 'chats',
     soundTimer: null,
     vibrateTimer: null,
     audioCtx: null,
@@ -109,14 +110,20 @@
   function showAuth() {
     $('#home').classList.add('hidden');
     $('#auth').classList.remove('hidden');
+    const tabBar = $('#tab-bar');
+    if (tabBar) tabBar.classList.add('hidden');
     setTimeout(() => $('#auth-id').focus(), 320);
   }
 
   async function showHome() {
     $('#auth').classList.add('hidden');
     $('#home').classList.remove('hidden');
+    const tabBar = $('#tab-bar');
+    if (tabBar) tabBar.classList.remove('hidden');
     renderProfile();
     renderContacts();
+    renderChats();
+    switchTab(state.tab || 'chats');
   }
 
   // ---------------- API ----------------
@@ -181,6 +188,8 @@
     node.classList.toggle('off', !online);
     node.querySelector('em').textContent = label || (online ? '已连接' : '连接中');
     $('#settings-net').textContent = online ? '在线' : '离线';
+    const indicator = $('#net-indicator');
+    if (indicator) indicator.classList.toggle('off', !online);
   }
 
   function wsURL() {
@@ -316,6 +325,7 @@
     state.user = null;
     state.contacts.clear();
     state.conversations.clear();
+    state.tab = 'chats';
     closeChat();
     setNet(false, '未登录');
     clearSession();
@@ -326,9 +336,19 @@
   // ---------------- 联系人 ----------------
   function renderProfile() {
     if (!state.user) return;
-    for (const node of [$('#me-avatar'), $('#settings-avatar')]) {
-      node.className = `avatar ${gradientClass(state.user.id)}`;
-      node.textContent = initial(state.user.name);
+    const meAvatar = $('#me-avatar');
+    if (meAvatar) {
+      meAvatar.className = `avatar me-big ${gradientClass(state.user.id)}`;
+      meAvatar.textContent = initial(state.user.name);
+    }
+    const settingsAvatar = $('#settings-avatar');
+    if (settingsAvatar) {
+      settingsAvatar.className = `avatar ${gradientClass(state.user.id)}`;
+      settingsAvatar.textContent = initial(state.user.name);
+    }
+    const railAvatar = $('#rail-avatar');
+    if (railAvatar) {
+      railAvatar.textContent = initial(state.user.name);
     }
     $('#me-name').textContent = state.user.name;
     $('#me-id').textContent = `@${state.user.id}`;
@@ -386,10 +406,81 @@
     }
   }
 
+  function chatListTime(ts) {
+    const date = new Date(ts);
+    if (Number.isNaN(date.getTime())) return '';
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    if (ts >= start) return chatTime(ts);
+    if (ts >= start - 86400000) return '昨天';
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+
+  function renderChats() {
+    const list = $('#chat-list');
+    if (!list) return;
+    const keyword = $('#contact-search').value.trim().toLowerCase();
+    const rows = [];
+    for (const conv of state.conversations.values()) {
+      const contact = state.contacts.get(conv.id) || {
+        id: conv.id,
+        name: conv.name || conv.id,
+        online: Boolean(conv.online)
+      };
+      if (keyword && !contact.name.toLowerCase().includes(keyword) && !contact.id.includes(keyword)) continue;
+      rows.push({ conv, contact });
+    }
+    rows.sort((a, b) => b.conv.lastAt - a.conv.lastAt);
+
+    list.textContent = '';
+    for (const { conv, contact } of rows) {
+      const unread = isChatUnread(contact.id);
+      const li = el('li', `chat-row${unread ? ' unread' : ''}`);
+      const av = el('div', `avatar ${gradientClass(contact.id)}`, initial(contact.name));
+      if (unread) av.appendChild(el('span', 'msg-dot'));
+
+      const main = el('div', 'row-main');
+      const top = el('div', 'row-top');
+      top.appendChild(el('span', 'row-name', contact.name));
+      top.appendChild(el('span', 'row-time', chatListTime(conv.lastAt)));
+      main.appendChild(top);
+      const preview = `${conv.fromMe ? '我：' : ''}${conv.lastText || ''}`;
+      const line = el('span', 'row-preview', preview);
+      line.title = preview;
+      main.appendChild(line);
+
+      li.append(av, main);
+      li.addEventListener('click', () => openChat(contact));
+      list.appendChild(li);
+    }
+    $('#empty-chats').classList.toggle('hidden', rows.length > 0);
+  }
+
+  function switchTab(tab) {
+    const next = ['chats', 'contacts', 'me'].includes(tab) ? tab : 'chats';
+    state.tab = next;
+    $$('[data-tab]').forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === next));
+
+    $('#pane-chats').classList.toggle('hidden', next !== 'chats');
+    $('#pane-contacts').classList.toggle('hidden', next !== 'contacts');
+    $('#pane-me').classList.toggle('hidden', next !== 'me');
+    $('#list-title').textContent = next === 'chats' ? '聊天' : next === 'contacts' ? '通讯录' : '我';
+    $('#btn-add').classList.toggle('hidden', next === 'me');
+    $('#online-count').classList.toggle('hidden', next !== 'contacts');
+    $('#search-wrap').classList.toggle('hidden', next === 'me');
+
+    const input = $('#contact-search');
+    input.value = '';
+    input.placeholder = next === 'chats' ? '搜索聊天' : '搜索联系人';
+    if (next === 'chats') renderChats();
+    if (next === 'contacts') renderContacts();
+  }
+
   function upsertContact(contact) {
     const prev = state.contacts.get(contact.id) || {};
     state.contacts.set(contact.id, { ...prev, ...contact });
     renderContacts();
+    renderChats();
     saveSession();
     if (state.chat.peer && state.chat.peer.id === contact.id) {
       state.chat.peer = { ...state.chat.peer, ...contact };
@@ -443,6 +534,7 @@
     try {
       const data = await api('/api/conversations');
       state.conversations = new Map((data.conversations || []).map((c) => [c.id, c]));
+      renderChats();
       renderContacts();
     } catch { /* 忽略 */ }
   }
@@ -498,10 +590,14 @@
 
   async function openChat(contact) {
     if (!contact) return;
+    clearTimeout(state.chat.closeTimer);
+    state.chat.closeTimer = null;
+    const pane = $('#chat');
+    pane.classList.remove('hidden', 'closing');
+    $('#welcome').classList.add('hidden');
     state.chat.peer = contact;
     state.chat.messages = [];
     state.chat.loading = true;
-    $('#chat').classList.remove('hidden');
     $('#chat-name').textContent = contact.name;
     paintAvatar($('#chat-avatar'), contact.name, contact.id);
     updateChatStatus();
@@ -522,18 +618,38 @@
     $('#chat-empty').textContent = '还没有消息，打个招呼吧';
     renderMessages();
     markChatRead(contact.id);
+    renderChats();
     renderContacts();
     scrollChatBottom();
-    setTimeout(() => { $('#chat-input').focus(); }, 120);
+    if (!window.matchMedia('(max-width: 900px)').matches) {
+      setTimeout(() => { $('#chat-input').focus(); }, 120);
+    }
   }
 
   function closeChat() {
-    $('#chat').classList.add('hidden');
+    const pane = $('#chat');
+    if (!pane || pane.classList.contains('hidden') || state.chat.closeTimer) return;
+    pane.style.transform = '';
+    pane.style.opacity = '';
     clearTimeout(state.chat.typingTimer);
     state.chat.typingTimer = null;
     state.chat.peer = null;
     state.chat.messages = [];
     state.chat.loading = false;
+
+    const finalize = () => {
+      pane.classList.add('hidden');
+      pane.classList.remove('closing');
+      $('#welcome').classList.remove('hidden');
+      state.chat.closeTimer = null;
+    };
+    const mobile = window.matchMedia('(max-width: 900px)').matches;
+    if (mobile) {
+      pane.classList.add('closing');
+      state.chat.closeTimer = setTimeout(finalize, 160);
+    } else {
+      finalize();
+    }
   }
 
   function sendChat() {
@@ -1113,6 +1229,7 @@
       case 'chat:conversations': {
         if (Array.isArray(msg.conversations)) {
           state.conversations = new Map(msg.conversations.map((c) => [c.id, c]));
+          renderChats();
           renderContacts();
         }
         break;
@@ -1127,11 +1244,13 @@
           renderMessages();
           scrollChatBottom();
           markChatRead(message.from);
+          renderChats();
           renderContacts();
         } else {
+          renderChats();
           renderContacts();
           const peer = state.contacts.get(message.from);
-          toast(`新消息 · ${peer ? peer.name : message.from}`);
+          toast(`新消息 · ${msg.from && msg.from.name ? msg.from.name : (peer ? peer.name : message.from)}`);
         }
         break;
       }
@@ -1147,7 +1266,7 @@
           renderMessages();
           scrollChatBottom();
         }
-        renderContacts();
+        renderChats();
         break;
       }
       case 'chat:typing': {
@@ -1433,7 +1552,13 @@
       if (btn) setAuthMode(btn.dataset.mode);
     });
     $('#auth-form').addEventListener('submit', submitAuth);
-    $('#contact-search').addEventListener('input', renderContacts);
+    $('#contact-search').addEventListener('input', () => {
+      renderContacts();
+      renderChats();
+    });
+    $$('[data-tab]').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+    $('#rail-avatar').addEventListener('click', () => switchTab('me'));
+    $('#btn-settings-me').addEventListener('click', () => openSheet('sheet-settings'));
     $('#chat-form').addEventListener('submit', (event) => {
       event.preventDefault();
       sendChat();
@@ -1448,6 +1573,44 @@
       closeChat();
       startCall(peer);
     });
+
+    // 移动端左缘右滑返回（仿微信）
+    const chatPane = $('#chat');
+    let swipe = null;
+    const onMobile = () => window.matchMedia('(max-width: 900px)').matches;
+    chatPane.addEventListener('touchstart', (event) => {
+      if (!onMobile() || state.chat.closeTimer || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      if (touch.clientX > 44) return;
+      swipe = { x: touch.clientX, y: touch.clientY, active: false };
+    }, { passive: true });
+    chatPane.addEventListener('touchmove', (event) => {
+      if (!swipe) return;
+      const touch = event.touches[0];
+      const dx = touch.clientX - swipe.x;
+      const dy = touch.clientY - swipe.y;
+      if (!swipe.active) {
+        if (Math.abs(dy) > 12) { swipe = null; return; }
+        if (dx < 10) return;
+        swipe.active = true;
+      }
+      event.preventDefault();
+      const shift = Math.max(0, dx);
+      chatPane.style.transform = `translateX(${shift}px)`;
+      chatPane.style.opacity = String(1 - Math.min(shift / 360, 0.25));
+    }, { passive: false });
+    const endSwipe = () => {
+      if (!swipe) return;
+      const moved = swipe.active;
+      swipe = null;
+      const match = /translateX\(([\d.]+)px\)/.exec(chatPane.style.transform || '');
+      const shift = match ? Number(match[1]) : 0;
+      chatPane.style.transform = '';
+      chatPane.style.opacity = '';
+      if (moved && shift > 80) closeChat();
+    };
+    chatPane.addEventListener('touchend', endSwipe);
+    chatPane.addEventListener('touchcancel', endSwipe);
     $('#btn-add').addEventListener('click', () => openSheet('sheet-add'));
     $('#add-search').addEventListener('input', searchUsers);
     $('#btn-settings').addEventListener('click', () => openSheet('sheet-settings'));
