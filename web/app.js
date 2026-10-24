@@ -410,6 +410,7 @@
   function setTheme(next) {
     applyTheme(next);
     saveUiPrefs();
+    $$('#theme-seg button').forEach((btn) => btn.classList.toggle('active', btn.dataset.themeOpt === theme));
   }
 
   const state = {
