@@ -778,12 +778,16 @@ public class CallService extends Service {
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent content = PendingIntent.getActivity(this, 21, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Intent setup = new Intent(this, SetupActivity.class).putExtra("editing", true);
+        setup.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent setupIntent = PendingIntent.getActivity(this, 22, setup, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_notify)
-            .setContentTitle("语音通话运行中")
-            .setContentText("可随时接收来电")
+            .setContentTitle("语音聊天运行中")
+            .setContentText("可随时接收消息与来电")
             .setOngoing(true)
             .setContentIntent(content)
+            .addAction(new Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_chat), "服务器设置", setupIntent).build())
             .setPriority(Notification.PRIORITY_LOW)
             .build();
     }

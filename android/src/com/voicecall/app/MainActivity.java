@@ -21,6 +21,7 @@ import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -43,8 +44,17 @@ public class MainActivity extends Activity {
     private WebView web;
     private FrameLayout container;
     private View splash;
+    private View loadError;
     private boolean keepScreenOn;
+    private boolean pageLoaded;
+    private boolean hadMainError;
     private ValueCallback<Uri[]> fileChooserCallback;
+    private final Runnable loadTimeout = new Runnable() {
+        @Override
+        public void run() {
+            if (!pageLoaded) showLoadError();
+        }
+    };
 
     private final Bridge.Page page = new Bridge.Page() {
         @Override
@@ -96,6 +106,81 @@ public class MainActivity extends Activity {
         requestNeededPermissions();
         checkAlertPermissions();
         web.loadUrl(server + "/");
+        web.postDelayed(loadTimeout, 12000);
+    }
+
+    /** 页面加载失败时提供原生兜底入口，避免因服务器地址失效而无法进入设置。 */
+    private void showLoadError() {
+        if (loadError != null || container == null) return;
+        hideSplash();
+
+        FrameLayout layer = new FrameLayout(this);
+        layer.setBackgroundColor(Ui.BG);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(Ui.dp(this, 24), Ui.dp(this, 26), Ui.dp(this, 24), Ui.dp(this, 24));
+
+        TextView title = Ui.text(this, "无法连接服务器", 19, Ui.TEXT);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+        box.addView(title);
+
+        TextView url = Ui.text(this, Prefs.serverUrl(this), 12, Ui.MUTED);
+        url.setGravity(Gravity.CENTER);
+        url.setPadding(0, Ui.dp(this, 8), 0, 0);
+        box.addView(url);
+
+        TextView hint = Ui.text(this, "请检查网络，或修改服务器地址后重试", 12, Ui.FAINT);
+        hint.setGravity(Gravity.CENTER);
+        hint.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 18));
+        box.addView(hint);
+
+        TextView retry = Ui.button(this, "重试", Ui.TEXT, 0x1FFFFFFF, 18);
+        retry.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                hideLoadError();
+                hadMainError = false;
+                pageLoaded = false;
+                if (web != null) {
+                    web.loadUrl(Prefs.serverUrl(MainActivity.this) + "/");
+                    web.postDelayed(loadTimeout, 12000);
+                }
+            }
+        });
+        LinearLayout.LayoutParams retryParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        box.addView(retry, retryParams);
+
+        TextView change = Ui.button(this, "修改服务器地址", 0xFF1A1033, 0xFFB9A4FF, 18);
+        change.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this, SetupActivity.class).putExtra("editing", true));
+            }
+        });
+        LinearLayout.LayoutParams changeParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        changeParams.topMargin = Ui.dp(this, 10);
+        box.addView(change, changeParams);
+
+        layer.addView(box, new FrameLayout.LayoutParams(
+            Ui.dp(this, 290), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER
+        ));
+        container.addView(layer, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        loadError = layer;
+    }
+
+    private void hideLoadError() {
+        if (loadError == null) return;
+        if (container != null) container.removeView(loadError);
+        loadError = null;
     }
 
     /** 页面就绪前的深色占位，避免 WebView 初始化阶段闪白屏。 */
@@ -107,7 +192,7 @@ public class MainActivity extends Activity {
         center.setOrientation(LinearLayout.VERTICAL);
         center.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        TextView mark = Ui.text(this, "语音通话", 23, Ui.TEXT);
+        TextView mark = Ui.text(this, "语音聊天", 23, Ui.TEXT);
         mark.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
         center.addView(mark);
 
@@ -218,7 +303,23 @@ public class MainActivity extends Activity {
                     handler.proceed();
                 } else {
                     handler.cancel();
+                    hadMainError = true;
+                    showLoadError();
                 }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request != null && request.isForMainFrame()) {
+                    hadMainError = true;
+                    showLoadError();
+                }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                hadMainError = true;
+                showLoadError();
             }
 
             @Override
@@ -228,8 +329,14 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (hadMainError) {
+                    showLoadError();
+                    return;
+                }
+                pageLoaded = true;
                 if (keepScreenOn) view.setKeepScreenOn(true);
                 hideSplash();
+                hideLoadError();
             }
         });
     }
@@ -315,6 +422,7 @@ public class MainActivity extends Activity {
         Bridge.detach(page);
         if (web != null) {
             try {
+                web.removeCallbacks(loadTimeout);
                 web.loadUrl("about:blank");
                 web.destroy();
             } catch (Exception ignored) {
@@ -324,6 +432,7 @@ public class MainActivity extends Activity {
         }
         container = null;
         splash = null;
+        loadError = null;
         super.onDestroy();
     }
 

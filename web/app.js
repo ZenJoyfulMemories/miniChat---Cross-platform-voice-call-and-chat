@@ -505,10 +505,12 @@
 
       const preview = conv
         ? `${conv.fromMe ? '我：' : ''}${conv.lastText || ''}`
-        : '点击开始聊天';
-      const sub = el('span', 'contact-sub', preview);
-      sub.title = preview;
-      meta.appendChild(sub);
+        : '';
+      if (preview) {
+        const sub = el('span', 'contact-sub', preview);
+        sub.title = preview;
+        meta.appendChild(sub);
+      }
 
       const call = el('button', 'contact-call');
       call.type = 'button';
